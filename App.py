@@ -23,9 +23,10 @@ has = torch.has_mkl
 device = Constants.device
 
 class App:
-    def __init__(self, play, training, draw = False):
+    def __init__(self, play, training, draw = False, logging = True):
         # Initialize Pygame
         self.draw = draw
+        self.logging = logging
         if draw:
             pygame.init()
 
@@ -194,4 +195,4 @@ class App:
 
         t = Training(Enviroment(map, model), draw=draw)
         
-        return t.train(), t.save
+        return t.train(self.logging), t.save

@@ -18,7 +18,7 @@ class Training:
         self.draw = draw
         
 
-    def train(self):
+    def train(self, logging = True):
         for episode in range(self.num_episodes):
             state = self.env.reset()
             done = False
@@ -44,7 +44,7 @@ class Training:
 
             # Когда собрали достаточно данных - обучаем
             if len(self.memory.states) >= self.batch_size:
-                self.ppo.update(self.memory, episode)
+                self.ppo.update(self.memory, episode, logging=logging)
                 self.memory.clear()
 
             print(f"Episode {(episode+1) * 100 / self.num_episodes}%")
