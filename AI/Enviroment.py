@@ -205,10 +205,10 @@ class Enviroment:
 
             self.step_num = dist * 1 * Constants.max_ball_speed / (Constants.speed_increment)
 
-            self.map.ball_teams[0][0].velocity.x = torch.tensor(0.)
-            self.map.ball_teams[0][0].velocity.y = torch.tensor(0.)
-            self.map.ball_teams[0][1].velocity.x = torch.tensor(0.)
-            self.map.ball_teams[0][1].velocity.y = torch.tensor(0.)
+            self.map.ball_teams[0][0].velocity.x = torch.tensor(0.).to(Constants.device)
+            self.map.ball_teams[0][0].velocity.y = torch.tensor(0.).to(Constants.device)
+            self.map.ball_teams[0][1].velocity.x = torch.tensor(0.).to(Constants.device)
+            self.map.ball_teams[0][1].velocity.y = torch.tensor(0.).to(Constants.device)
             # for team in self.map.ball_teams:
             #     for ball in team:
             #         print(f"{ball}")

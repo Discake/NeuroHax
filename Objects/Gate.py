@@ -12,8 +12,8 @@ class Gate:
         self.inner_width = Constants.gates_inner_width
         self.inner_color = Constants.gates_inner_color
         self.outer_color = Constants.gates_outer_color
-        self.position = Vector(torch.tensor(gate_data.center_x, dtype=torch.float32), torch.tensor(gate_data.center_y, dtype=torch.float32))
-        self.add_pos = Vector(torch.tensor(gate_data.add_pos[0], dtype=torch.float32), torch.tensor(gate_data.add_pos[1], dtype=torch.float32))
+        self.position = Vector(torch.tensor(gate_data.center_x, dtype=torch.float32).to(Constants.device), torch.tensor(gate_data.center_y, dtype=torch.float32).to(Constants.device))
+        self.add_pos = Vector(torch.tensor(gate_data.add_pos[0], dtype=torch.float32).to(Constants.device), torch.tensor(gate_data.add_pos[1], dtype=torch.float32).to(Constants.device))
 
         self.boundaries = []
 

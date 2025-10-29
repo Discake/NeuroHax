@@ -140,10 +140,10 @@ class Map:
             self.ball_teams[0][0].position.x = Constants.players_positions_team1[0].x
         else:
             self.ball_teams[0][0].position.x = Constants.players_positions_team2[0].x
-        self.ball_teams[0][0].position.y = torch.tensor(Constants.field_margin / 2 + y_pos)
+        self.ball_teams[0][0].position.y = torch.tensor(Constants.field_margin / 2 + y_pos).to(Constants.device)
 
-        self.ball_teams[0][1].position.x = torch.tensor(Constants.x_center)
-        self.ball_teams[0][1].position.y = torch.tensor(Constants.y_center)
+        self.ball_teams[0][1].position.x = torch.tensor(Constants.x_center).to(Constants.device)
+        self.ball_teams[0][1].position.y = torch.tensor(Constants.y_center).to(Constants.device)
         # self.players.clear()
         # for team in self.ball_teams:
         #     for i in range(len(team) - 1):

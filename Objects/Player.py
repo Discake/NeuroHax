@@ -7,7 +7,7 @@ class Player(Ball):
     def __init__(self, position, radius, mass, max_velocity):
         super().__init__(position, radius, mass, max_velocity)
         self.is_kicking = False
-        self.velocity = Validable_vector(torch.tensor(0.), torch.tensor(0.))
+        self.velocity = Validable_vector(torch.tensor(0.).to(Constants.device), torch.tensor(0.).to(Constants.device))
     
     def set_kicking(self, is_kicking):
         self.is_kicking = is_kicking

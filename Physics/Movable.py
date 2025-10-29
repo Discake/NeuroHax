@@ -35,14 +35,14 @@ class Movable(BallCollision):
             # self.velocity.x = self.velocity.x.detach().clone()
             pass
         else:
-            self.velocity.x = torch.tensor(self.velocity.x, dtype=torch.float32)
+            self.velocity.x = torch.tensor(self.velocity.x, dtype=torch.float32).to(Constants.device)
 
 
         if isinstance(self.velocity.y, torch.Tensor):
             # self.velocity.y = self.velocity.y.detach().clone()
             pass
         else:
-            self.velocity.y = torch.tensor(self.velocity.y, dtype=torch.float32)
+            self.velocity.y = torch.tensor(self.velocity.y, dtype=torch.float32).to(Constants.device)
 
 
         speed = torch.sqrt(self.velocity.x**2 + self.velocity.y**2)

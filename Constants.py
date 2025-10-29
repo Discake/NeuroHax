@@ -65,9 +65,9 @@ for i in range(player_number):
     players_y_positions.append(player_y_position_from_center + player_y_increment * (i + 1) * (-1 if i % 2 == 0 else 1))
     balls_y_positions.append(ball_y_position_from_center + ball_y_increment * (i + 1) * (-1 if i % 2 == 0 else 1))
 
-players_positions_team1 = [Validable_vector(torch.tensor(player_x_position_from_center_team1 + x_center, dtype=torch.float32), torch.tensor(y + y_center, dtype=torch.float32)) for y in players_y_positions]
-players_positions_team2 = [Validable_vector(torch.tensor(player_x_position_from_center_team2 + x_center, dtype=torch.float32), torch.tensor(y + y_center, dtype=torch.float32)) for y in players_y_positions]
-balls_positions = [Validable_vector(torch.tensor(ball_x_position_from_center + x_center, dtype=torch.float32), torch.tensor(y + y_center, dtype=torch.float32)) for y in balls_y_positions]
+players_positions_team1 = [Validable_vector(torch.tensor(player_x_position_from_center_team1 + x_center, dtype=torch.float32).to(device), torch.tensor(y + y_center, dtype=torch.float32).to(device)) for y in players_y_positions]
+players_positions_team2 = [Validable_vector(torch.tensor(player_x_position_from_center_team2 + x_center, dtype=torch.float32).to(device), torch.tensor(y + y_center, dtype=torch.float32).to(device)) for y in players_y_positions]
+balls_positions = [Validable_vector(torch.tensor(ball_x_position_from_center + x_center, dtype=torch.float32).to(device), torch.tensor(y + y_center, dtype=torch.float32).to(device)) for y in balls_y_positions]
 
 # Gates positions
 
@@ -90,8 +90,8 @@ right_gates_center_y = y_center
 # field_separation - отступ/шаг
 
 def set_wall(x, y, width, height, is_vertical):
-    x = torch.tensor(x, dtype=torch.float32)
-    y = torch.tensor(y, dtype=torch.float32)
+    x = torch.tensor(x, dtype=torch.float32).to(device)
+    y = torch.tensor(y, dtype=torch.float32).to(device)
     class Wall:
         def __init__(self, is_vertical):
             self.start = None

@@ -1,5 +1,6 @@
 import pygame
 import torch
+import Constants
 from Data_structure.Validable_vector import Validable_vector
 from Physics.Utils import reflect_ball_from_point
 
@@ -60,7 +61,7 @@ class WallCollision():
                 dist2 = (pos[0]-nearest[0])**2 + (pos[1]-nearest[1])**2
                 if dist2 > 0:
                     # Столкновение с концом (точкой)
-                    new_vel, new_pos = reflect_ball_from_point(torch.tensor(pos), torch.stack([object.velocity.x, object.velocity.y]), torch.tensor(nearest), object.radius)
+                    new_vel, new_pos = reflect_ball_from_point(torch.tensor(pos).to(Constants.device), torch.stack([object.velocity.x, object.velocity.y]), torch.tensor(nearest).to(Constants.device), object.radius)
                 else:
                     # Столкновение с корпусом стены (инвертируем соответствующую компоненту)
                     vel = torch.stack([object.velocity.x, object.velocity.y])

@@ -1,6 +1,8 @@
 import numpy as np
 import torch
 
+import Constants
+
 def reflect_ball_from_point(ball_pos, ball_vel, point, radius):
         # ball_pos, ball_vel, point — np.array([x, y])
 
@@ -12,7 +14,7 @@ def reflect_ball_from_point(ball_pos, ball_vel, point, radius):
         dist = torch.norm(direction)
         if dist == 0:
             # редкий случай: совпадение, просто инвертировать
-            return -ball_vel, point + radius * torch.tensor([1, 0])
+            return -ball_vel, point + radius * torch.tensor([1, 0]).to(Constants.device)
         if dist <= radius:
             # Нормализуем вектор
             normal = direction / dist
