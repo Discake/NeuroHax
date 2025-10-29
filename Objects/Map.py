@@ -74,7 +74,7 @@ class Map:
                         for line in gate.boundaries:
                             line.resolve_collision(ball)
                     for wall in self.walls:
-                        if wall.detect_collision:
+                        if wall.detect_collision(ball):
                             wall.resolve_collision(ball)
                             self.wall_hit = True
 
