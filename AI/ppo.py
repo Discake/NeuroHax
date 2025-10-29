@@ -29,7 +29,7 @@ class PPO:
     def select_action(self, state):
         # Используем старую политику для сбора данных
         with torch.no_grad():
-            state = torch.FloatTensor(state, device=Constants.device).unsqueeze(0)
+            state = torch.tensor(state, device=Constants.device).unsqueeze(0)
             action, log_prob, _, _ = self.policy_old.get_action(state)
         
         return action, log_prob  # Сохраняем log_prob
@@ -55,12 +55,12 @@ class PPO:
         # Данные из траекторий
         states = torch.stack([s.detach() for s in memory.states])
         actions = torch.stack([s.detach() for s in memory.actions])
-        old_log_probs = torch.FloatTensor(memory.old_log_probs, device=Constants.device)  # От policy_old
+        old_log_probs = torch.tensor(memory.old_log_probs, device=Constants.device)  # От policy_old
         rewards = memory.rewards
         
         # Вычисляем returns
         returns = self.compute_returns(rewards)
-        returns = torch.FloatTensor(returns, device=Constants.device)
+        returns = torch.tensor(returns, device=Constants.device)
         
         # K эпох оптимизации
         for epoch in range(self.K_epochs):
