@@ -21,9 +21,11 @@ class Training:
         self.save = None
         self.draw = draw
         self.train_loader = train_loader
+        self.logging = False
         
 
     def train(self, logging = True):
+        self.logging = logging
         for episode in range(self.num_episodes):
             state = self.env.reset()
             done = False
@@ -60,7 +62,6 @@ class Training:
             # Когда собрали достаточно данных - обучаем
             if len(self.memory.states) >= self.batch_size:
 
-                
                 dataset = TrajectoryDataset(states, actions, rewards, old_log_probs)
                 self.train_loader = torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, shuffle=False)
 
@@ -71,7 +72,7 @@ class Training:
                     batch_log_probs = batch['log_prob'].to(Constants.device, non_blocking=True)
 
                     self.ppo.update(batch_states=batch_states, batch_actions=batch_actions,
-                                     batch_rewards=batch_rewards, batch_logps=batch_log_probs, ep=episode, logging=False)
+                                     batch_rewards=batch_rewards, batch_logps=batch_log_probs, ep=episode, logging=self.logging)
                 self.memory.clear()
 
             print(f"Episode {(episode+1) * 100 / self.num_episodes}%")

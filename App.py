@@ -18,16 +18,16 @@ from AI.training import Training
 
 torch.backends.cudnn.benchmark = True
 torch.backends.cudnn.enabled = True
-torch.set_num_threads(4)   # например, 8 потоков/ядер
-torch.set_num_interop_threads(4)
+torch.set_num_threads(14)   # например, 8 потоков/ядер
+torch.set_num_interop_threads(14)
 has = torch.has_mkl
 
 device = Constants.device
 
 class App:
-    def __init__(self, play, training, train_loader, draw = False, logging = True):
+    def __init__(self, play, training, draw = False, logging = True):
         # Initialize Pygame
-        self.train_loader = train_loader
+        self.train_loader = None
         self.draw = draw
         self.logging = logging
         if draw:
