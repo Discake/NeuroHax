@@ -50,7 +50,7 @@ class PPO:
         returns.reverse()
         return returns
     
-    def update(self, memory : Memory, ep):
+    def update(self, memory : Memory, ep, logging = False):
         # Данные из траекторий
         states = torch.stack([s.detach().cpu() for s in memory.states])
         actions = torch.stack([s.detach().cpu() for s in memory.actions])
@@ -98,12 +98,12 @@ class PPO:
             # torch.nn.utils.clip_grad_norm_(self.policy.parameters(), 1)
             self.optimizer.step()
             self.lr_scheduler.step()
+            if logging:
+                print(f"Epoch {epoch}: mean_ratio={mean_ratio:.4f}, "
+                    f"clipped={clipped_fraction:.2%}, new_log_prob = {new_log_probs.mean().item():.4f}")
+                print('Current learning rate:', self.optimizer.param_groups[0]['lr'])
 
-            print(f"Epoch {epoch}: mean_ratio={mean_ratio:.4f}, "
-                  f"clipped={clipped_fraction:.2%}, new_log_prob = {new_log_probs.mean().item():.4f}")
-            print('Current learning rate:', self.optimizer.param_groups[0]['lr'])
-
-        self.plotter.update(ep, (returns - values.detach()).mean().detach().item())
+                self.plotter.update(ep, (returns - values.detach()).mean().detach().item())
         
         # После K эпох: обновляем старую политику
         self.policy_old.load_state_dict(self.policy.state_dict())

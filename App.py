@@ -21,9 +21,11 @@ torch.set_num_interop_threads(12)
 has = torch.has_mkl
 
 class App:
-    def __init__(self, play, training):
+    def __init__(self, play, training, draw = False):
         # Initialize Pygame
-        pygame.init()
+        self.draw = draw
+        if draw:
+            pygame.init()
 
         self.play = play
         self.training = training
@@ -130,44 +132,43 @@ class App:
             ai_action = Net_action(nn, self.map, 0)
             actions.append(ai_action)  
 
-        self.drawing.is_env = False
+        if self.draw:
+            # Game loop
+            while running:
+                pygame.time.delay(5)  # Pause for 5 milliseconds
 
-        # Game loop
-        while running:
-            pygame.time.delay(5)  # Pause for 5 milliseconds
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        running = False
+                    for action in actions:
+                        if isinstance(action, Keydown_action):
+                            action.set_event(event)
+                
+                # for i in range(len(actions)):
+                #     if isinstance(actions[i], Net_action):
+                #         actions[i].update_translator()
 
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    running = False
-                for action in actions:
-                    if isinstance(action, Keydown_action):
-                        action.set_event(event)
-            
-            # for i in range(len(actions)):
-            #     if isinstance(actions[i], Net_action):
-            #         actions[i].update_translator()
+                for j in range(self.teams_number):
+                    for i in range(Constants.player_number):
+                        action = actions[i + j * Constants.player_number]
 
-            for j in range(self.teams_number):
-                for i in range(Constants.player_number):
-                    action = actions[i + j * Constants.player_number]
-
-                    if isinstance(action, Net_action):
-                        action.set_player(self.map.ball_teams[j][i])
-                        # action.update_translator()
-                        inp, _, _ = action.translator.translate_output(action.translator.translate_input())
-                        action.act(inp)
-                    else:
-                        action.set_player(self.map.ball_teams[0][0])
-                        action.act()
+                        if isinstance(action, Net_action):
+                            action.set_player(self.map.ball_teams[j][i])
+                            # action.update_translator()
+                            inp, _, _ = action.translator.translate_output(action.translator.translate_input())
+                            action.act(inp)
+                        else:
+                            action.set_player(self.map.ball_teams[0][0])
+                            action.act()
 
 
-            self.drawing.draw()
-            self.map.move_balls()  # Move balls and resolve collisions               
+                self.drawing.draw()
+                self.map.move_balls()  # Move balls and resolve collisions               
 
-            pygame.display.update()
+                pygame.display.update()
 
-        # Quit Pygame
-        pygame.quit()
+            # Quit Pygame
+            pygame.quit()
 
     def callback(self):
         self.drawing.draw()
@@ -175,7 +176,7 @@ class App:
         t = Timer(0.5, self.callback)
         t.start()
 
-    def train(self, map):
+    def train(self, map, draw = False):
         checkpoint = torch.load('Maksigma_net_ravnykh_2.pth')
         model = Maksigma_net()  # Создайте экземпляр модели
         model.load_state_dict(checkpoint)
