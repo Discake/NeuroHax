@@ -130,8 +130,11 @@ def worker(env_map, state_dict):
     # 1. Инициализация своей среды, policy
     # env_map = clone_and_detach_map(env_map)
 
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
     nn = Maksigma_net()
     nn.load_state_dict(state_dict)
+    nn.to(device)
     env = Enviroment(env_map, nn)
     
     # 2. Сбор trajectory
