@@ -16,8 +16,8 @@ from AI.reinforce import reinforce
 import torch
 from AI.training import Training
 
-torch.set_num_threads(12)   # например, 8 потоков/ядер
-torch.set_num_interop_threads(12)
+torch.set_num_threads(4)   # например, 8 потоков/ядер
+torch.set_num_interop_threads(4)
 has = torch.has_mkl
 
 device = Constants.device
@@ -127,7 +127,7 @@ class App:
 
         if self.training:
             # torch.autograd.set_detect_anomaly(True)
-            nn, save = self.train(self.map)
+            nn, save = self.train(self.map, draw=self.draw)
 
             torch.save({'model_state_dict': save}, f'{nn.name}.pth')
 
@@ -192,6 +192,6 @@ class App:
 
         # nn = r.train(model, Enviroment(model), episodes=6000000000, batch_episodes=1, gamma=0.995, device="cpu")
 
-        t = Training(Enviroment(map, model))
+        t = Training(Enviroment(map, model), draw=draw)
         
         return t.train(), t.save

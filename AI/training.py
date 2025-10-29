@@ -7,7 +7,7 @@ from Draw.Drawing import Drawing
 import pygame
 
 class Training:
-    def __init__(self, env : Enviroment):
+    def __init__(self, env : Enviroment, draw = False):
         self.num_episodes = 10000
         self.batch_size = 200
         self.memory = Memory()
@@ -15,6 +15,7 @@ class Training:
         self.env = env
         self.last_rewards = -1000
         self.save = None
+        self.draw = draw
         
 
     def train(self):
@@ -29,8 +30,9 @@ class Training:
                 
                 # Выполняем действие в среде
                 next_state, reward, done = self.env.step(action)
-                # d.draw()
-                # pygame.display.update()
+                if self.draw:
+                    d.draw()
+                    pygame.display.update()
                 
                 # Сохраняем в memory
                 self.memory.store(state, action, log_prob, reward, done)
