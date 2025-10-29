@@ -32,11 +32,4 @@ class Gate:
         self.boundaries.append(boundary1)
         self.boundaries.append(boundary2)
         self.boundaries.append(boundary3)
-
-    def draw(self):
-        for bound in self.boundaries:
-            bound.draw()
-
-    def set_screen(self, screen):
-        self.screen = screen
         

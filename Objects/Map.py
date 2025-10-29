@@ -155,5 +155,36 @@ class Map:
             ball.set_color(Constants.ball_color)
             
             self.balls.append(ball)
+
+def clone_and_detach_object(obj):
+    if hasattr(obj, '__dict__'):
+        cloned_obj = obj.__class__.__new__(obj.__class__)
+        for k, v in obj.__dict__.items():
+            if isinstance(v, torch.Tensor):
+                # detach + clone (на CPU - detach() делает копию без градиентов)
+                setattr(cloned_obj, k, v.detach().clone())
+            elif isinstance(v, list):
+                setattr(cloned_obj, k, [clone_and_detach_object(x) if hasattr(x, '__dict__') else x for x in v])
+            elif isinstance(v, dict):
+                setattr(cloned_obj, k, {kk: clone_and_detach_object(vv) for kk, vv in v.items()})
+            else:
+                setattr(cloned_obj, k, v)
+        return cloned_obj
+    else:
+        return obj
+
+def clone_and_detach_map(old_map):
+    new_map = Map(old_map.width, old_map.height)
+    new_map.score = list(old_map.score)
+    new_map.save = old_map.save
+    new_map.hit_flag = old_map.hit_flag
+    new_map.kick_flag = old_map.kick_flag
+    new_map.wall_hit = old_map.wall_hit
+    new_map.ball_teams = [[clone_and_detach_object(ball) for ball in team] for team in old_map.ball_teams]
+    new_map.balls = [clone_and_detach_object(ball) for ball in old_map.balls]
+    new_map.players = [clone_and_detach_object(player) for player in old_map.players]
+    new_map.gates   = [clone_and_detach_object(gate) for gate in old_map.gates]
+    new_map.walls   = [clone_and_detach_object(wall) for wall in old_map.walls]
+    return new_map
     
     

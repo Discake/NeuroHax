@@ -1,4 +1,7 @@
 from App import App
 
-app = App(play=False, training=True, draw=False, logging=False)
-app.start_ai_game()
+if __name__ == '__main__':
+    app = App(play=False, train=True, draw=False, logging=True)
+    # app.start_ai_game()
+    training = app.training(app.map)
+    training.train(True)

@@ -25,7 +25,7 @@ has = torch.has_mkl
 device = Constants.device
 
 class App:
-    def __init__(self, play, training, draw = False, logging = True):
+    def __init__(self, play, train, draw = False, logging = True):
         # Initialize Pygame
         self.train_loader = None
         self.draw = draw
@@ -34,7 +34,7 @@ class App:
             pygame.init()
 
         self.play = play
-        self.training = training
+        self.train = train
 
         self.map = Map(Constants.field_size[0], Constants.field_size[1])
         self.drawing = Drawing(self.map)
@@ -46,7 +46,7 @@ class App:
         
         self.teams_number = 10
 
-        if training or play:
+        if train or play:
             self.teams_number = 1
 
         for i in range(self.teams_number):
@@ -69,7 +69,7 @@ class App:
         gates_data = [Gates_data(is_left=True), Gates_data(is_left=False)]
         for data in gates_data:
             gate = Gate(data)
-            gate.set_screen(self.drawing.screen)
+            # gate.set_screen(self.drawing.screen)
             gate.add_boundaries()
             self.map.add_gate(gate)
 
@@ -182,7 +182,7 @@ class App:
         t = Timer(0.5, self.callback)
         t.start()
 
-    def train(self, map, draw = False):
+    def training(self, map, draw = False):
         checkpoint = torch.load('Maksigma_net_ravnykh_2.pth')
         model = Maksigma_net().to(device=device)
         print(f"Device = {device}")  # Создайте экземпляр модели
@@ -198,4 +198,4 @@ class App:
 
         t = Training(Enviroment(map, model), self.train_loader, draw=draw)
         
-        return t.train(self.logging), t.save
+        return t

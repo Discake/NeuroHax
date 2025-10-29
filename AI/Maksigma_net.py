@@ -105,3 +105,11 @@ class Maksigma_net(nn.Module):
         total_entropy = velocity_entropy + kick_entropy
         
         return total_logp, values.squeeze(-1), total_entropy
+    
+    def select_action(self, state):
+        # Используем старую политику для сбора данных
+        with torch.no_grad():
+            state = state.unsqueeze(0)
+            action, log_prob, _, _ = self.get_action(state)
+        
+        return action, log_prob  # Сохраняем log_prob

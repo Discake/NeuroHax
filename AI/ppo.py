@@ -32,7 +32,7 @@ class PPO:
     def select_action(self, state):
         # Используем старую политику для сбора данных
         with torch.no_grad():
-            state = torch.tensor(state, device=Constants.device).unsqueeze(0)
+            state = state.unsqueeze(0)
             action, log_prob, _, _ = self.policy_old.get_action(state)
         
         return action, log_prob  # Сохраняем log_prob

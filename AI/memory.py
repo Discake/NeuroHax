@@ -8,10 +8,10 @@ class Memory:
     
     def store(self, state, action, log_prob, reward, is_terminal):
         """Сохраняет один шаг траектории"""
-        self.states.append(state.squeeze(0))
-        self.actions.append(action.squeeze(0))
-        self.old_log_probs.append(log_prob.squeeze(0))
-        self.rewards.append(reward.squeeze(0))
+        self.states.append(state.squeeze(0).detach())
+        self.actions.append(action.squeeze(0).detach())
+        self.old_log_probs.append(log_prob.squeeze(0).detach())
+        self.rewards.append(reward.squeeze(0).detach())
         self.is_terminals.append(is_terminal)
     
     def clear(self):
