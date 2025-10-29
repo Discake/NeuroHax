@@ -6,6 +6,9 @@ from AI.Reward_plotter import Reward_plotter
 from AI.memory import Memory
 import Constants
 
+scaler = torch.amp.grad_scaler.GradScaler()
+
+
 class PPO:
     def __init__(self, net=None):
 
@@ -64,40 +67,49 @@ class PPO:
         
         # K эпох оптимизации
         for epoch in range(self.K_epochs):
-            # Вычисляем НОВЫЕ log_prob с текущей политикой
-            new_log_probs, values, entropy = self.policy.evaluate_actions(
-                states, actions
-            )
-            
-            # ПРАВИЛЬНОЕ вычисление ratio (поэлементно!)
-            ratios = torch.exp(new_log_probs - old_log_probs)
-            
-            # Мониторинг
-            mean_ratio = ratios.mean().item()
-            clipped_fraction = ((ratios < 0.8) | (ratios > 1.2)).float().mean()
-            
-            
-            # Advantages
-            advantages = returns - values.detach()
-            advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
-            
-            # PPO loss
-            surr1 = ratios * advantages
-            surr2 = torch.clamp(ratios, 1-self.eps_clip, 1+self.eps_clip) * advantages
-            actor_loss = -torch.min(surr1, surr2).mean()
-            
-            critic_loss = F.mse_loss(values, returns)
-            entropy_loss = entropy.mean()
 
-            entropy_bonus = self.get_entropy_coef(ep) * entropy_loss
-            
-            loss = actor_loss + 0.5 * critic_loss - entropy_bonus
+            with torch.amp.autocast_mode.autocast(Constants.device.type):
+
+                # Вычисляем НОВЫЕ log_prob с текущей политикой
+                new_log_probs, values, entropy = self.policy.evaluate_actions(
+                    states, actions
+                )
+                
+                # ПРАВИЛЬНОЕ вычисление ratio (поэлементно!)
+                ratios = torch.exp(new_log_probs - old_log_probs)
+                
+                # Мониторинг
+                mean_ratio = ratios.mean().item()
+                clipped_fraction = ((ratios < 0.8) | (ratios > 1.2)).float().mean()
+                
+                
+                # Advantages
+                advantages = returns - values.detach()
+                advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+                
+                # PPO loss
+                surr1 = ratios * advantages
+                surr2 = torch.clamp(ratios, 1-self.eps_clip, 1+self.eps_clip) * advantages
+                actor_loss = -torch.min(surr1, surr2).mean()
+                
+                critic_loss = F.mse_loss(values, returns)
+                entropy_loss = entropy.mean()
+
+                entropy_bonus = self.get_entropy_coef(ep) * entropy_loss
+                
+                loss = actor_loss + 0.5 * critic_loss - entropy_bonus
             
             # Обновляем policy (не policy_old!)
-            self.optimizer.zero_grad()
-            loss.backward()
-            # torch.nn.utils.clip_grad_norm_(self.policy.parameters(), 1)
-            self.optimizer.step()
+
+            self.optimizer.zero_grad(set_to_none=True)
+            scaler.scale(loss).backward()
+            scaler.step(self.optimizer)
+            scaler.update()
+
+
+            # self.optimizer.zero_grad()
+            # loss.backward()
+            # self.optimizer.step()
             self.lr_scheduler.step()
             if logging:
                 print(f"Epoch {epoch}: mean_ratio={mean_ratio:.4f}, "

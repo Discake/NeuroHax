@@ -113,18 +113,18 @@ class Map:
             
 
     def save_state(self):
-        self.save = copy.deepcopy(self.ball_teams)
+        # self.save = copy.deepcopy(self.ball_teams)
 
-        for team in self.ball_teams:
-            for ball in team:
-                print("Saved: ")
-                print(f"{ball}")
+        # for team in self.ball_teams:
+        #     for ball in team:
+        #         print("Saved: ")
+        #         print(f"{ball}")
+        pass
 
     def load(self):
 
         self.kick_flag = False
         self.hit_flag = False
-        num = len(self.ball_teams)
         # self.ball_teams.clear()
 
         # for _ in range(num):

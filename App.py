@@ -16,6 +16,8 @@ from AI.reinforce import reinforce
 import torch
 from AI.training import Training
 
+torch.backends.cudnn.benchmark = True
+torch.backends.cudnn.enabled = True
 torch.set_num_threads(4)   # например, 8 потоков/ядер
 torch.set_num_interop_threads(4)
 has = torch.has_mkl
