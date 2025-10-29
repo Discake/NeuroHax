@@ -17,7 +17,7 @@ import multiprocessing as mp
 class Training:
     def __init__(self, env : Enviroment, train_loader, draw = False):
         self.num_episodes = 100
-        self.batch_size = 4096 * 8
+        self.batch_size = 4096
         self.memory = Memory()
         self.ppo = PPO(env.ai_action.translator.net)
         self.env = env
@@ -31,7 +31,7 @@ class Training:
     def train(self, logging = True):
         self.logging = logging
 
-        
+        merged_list = []
 
         for episode in range(self.num_episodes):
             
@@ -79,11 +79,12 @@ class Training:
             # rewards = 
 
             
-
+            merged_list.append(merge_memories(results))
+            merged = merge_memories(merged_list)
             # Когда собрали достаточно данных - обучаем
-            if len(self.memory.states) >= self.batch_size:
+            if len(merged.actions) >= self.batch_size:
 
-                merged = merge_memories(results)
+                
                 states = torch.stack(merged.states)        # shape: (total_steps, state_size)
                 actions = torch.stack(merged.actions)
                 rewards = torch.tensor(merged.rewards)
@@ -104,6 +105,7 @@ class Training:
                     
                 torch.save(self.ppo.policy.state_dict(), f"{self.ppo.policy.name}.pth")
                 self.memory.clear()
+                merged_list.clear()
 
             print(f"Episode {(episode+1) * 100 / self.num_episodes}%")
 

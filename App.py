@@ -114,13 +114,13 @@ class App:
 
         actions = []
         
-        if not self.play and not self.training:
+        if not self.play and not self.train:
             for j in range(self.teams_number):
                 for i in range(Constants.player_number - 1 if self.play and j == 0 else Constants.player_number):
                     # if i == 0 and j == 0:
                     #     nn = self.train()
                     nn = Maksigma_net()
-                    nn.load_state_dict(torch.load(f'Maksigma_net_ravnykh_a_lot_of_kicks.pth'))
+                    nn.load_state_dict(torch.load(f'{nn.name}.pth'))
                     nn = nn.eval()
                     ai_action = Net_action(nn, self.map, j)
                     actions.append(ai_action)
@@ -129,9 +129,9 @@ class App:
             keydown_action = Keydown_action()
             actions.append(keydown_action)
 
-        if self.training:
+        if self.train:
             # torch.autograd.set_detect_anomaly(True)
-            nn, save = self.train(self.map, draw=self.draw)
+            nn, save = self.training(self.map, draw=self.draw)
 
             torch.save({'model_state_dict': save}, f'{nn.name}.pth')
 
