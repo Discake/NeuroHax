@@ -52,8 +52,8 @@ class PPO:
     
     def update(self, memory : Memory, ep, logging = False):
         # Данные из траекторий
-        states = torch.stack([s.detach().cpu() for s in memory.states])
-        actions = torch.stack([s.detach().cpu() for s in memory.actions])
+        states = torch.stack([s.detach() for s in memory.states])
+        actions = torch.stack([s.detach() for s in memory.actions])
         old_log_probs = torch.FloatTensor(memory.old_log_probs)  # От policy_old
         rewards = memory.rewards
         

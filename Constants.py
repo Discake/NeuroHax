@@ -1,6 +1,8 @@
 import torch
 from Data_structure.Validable_vector import Validable_vector
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 # Physics
 
 player_radius = 30  # Radius of the player

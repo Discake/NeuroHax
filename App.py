@@ -20,7 +20,7 @@ torch.set_num_threads(12)   # например, 8 потоков/ядер
 torch.set_num_interop_threads(12)
 has = torch.has_mkl
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = Constants.device
 
 class App:
     def __init__(self, play, training, draw = False):
