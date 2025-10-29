@@ -20,6 +20,8 @@ torch.set_num_threads(12)   # например, 8 потоков/ядер
 torch.set_num_interop_threads(12)
 has = torch.has_mkl
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 class App:
     def __init__(self, play, training, draw = False):
         # Initialize Pygame
@@ -178,7 +180,8 @@ class App:
 
     def train(self, map, draw = False):
         checkpoint = torch.load('Maksigma_net_ravnykh_2.pth')
-        model = Maksigma_net()  # Создайте экземпляр модели
+        model = Maksigma_net().to(device=device)
+        print(f"Device = {device}")  # Создайте экземпляр модели
         model.load_state_dict(checkpoint)
         # # loss = checkpoint['loss']
         # # r = reinforce(model, lr=3e-2, loss=10)
