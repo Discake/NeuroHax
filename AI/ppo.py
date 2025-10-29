@@ -54,15 +54,12 @@ class PPO:
         returns.reverse()
         return returns
     
-    def update(self, memory : Memory, ep, logging = True):
+    def update(self, batch_states, batch_actions, batch_rewards, batch_logps, ep, logging = True):
         # Данные из траекторий
-        states = torch.stack([s.detach() for s in memory.states])
-        actions = torch.stack([s.detach() for s in memory.actions])
-        old_log_probs = torch.tensor(memory.old_log_probs, device=Constants.device)  # От policy_old
-        rewards = memory.rewards
+        #TODO
         
         # Вычисляем returns
-        returns = self.compute_returns(rewards)
+        returns = self.compute_returns(batch_rewards)
         returns = torch.tensor(returns, device=Constants.device)
         
         # K эпох оптимизации
@@ -72,11 +69,11 @@ class PPO:
 
                 # Вычисляем НОВЫЕ log_prob с текущей политикой
                 new_log_probs, values, entropy = self.policy.evaluate_actions(
-                    states, actions
+                    batch_states, batch_actions
                 )
                 
                 # ПРАВИЛЬНОЕ вычисление ratio (поэлементно!)
-                ratios = torch.exp(new_log_probs - old_log_probs)
+                ratios = torch.exp(new_log_probs - batch_logps)
                 
                 # Мониторинг
                 mean_ratio = ratios.mean().item()

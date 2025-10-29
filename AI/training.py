@@ -1,9 +1,13 @@
 import numpy as np
 import torch
+from torch.utils.data import DataLoader
+from AI.TrajectoryDataset import TrajectoryDataset
 from AI.memory import Memory
 from AI.ppo import PPO
 from AI.Enviroment import Enviroment
+import Constants
 from Draw.Drawing import Drawing
+
 import pygame
 
 class Training:
@@ -42,9 +46,38 @@ class Training:
             if(episode % 100 == 0):
                 self.save = torch.save(self.ppo.policy.state_dict(), f"{self.ppo.policy.name}.pth")
 
+
+            states = torch.stack([s.detach() for s in self.memory.states])
+            actions = torch.stack([s.detach() for s in self.memory.actions])
+            # old_log_probs = torch.tensor(, device=Constants.device)  # От policy_old
+            old_log_probs = torch.stack([s.detach() for s in self.memory.old_log_probs])  # От policy_old
+            rewards = torch.stack([s.detach() for s in self.memory.rewards])  # От policy_old
+            # rewards = 
+
+            
+
             # Когда собрали достаточно данных - обучаем
             if len(self.memory.states) >= self.batch_size:
-                self.ppo.update(self.memory, episode, logging=logging)
+
+                
+                dataset = TrajectoryDataset(states, actions, rewards, old_log_probs)
+                train_loader = DataLoader(
+                        dataset=dataset,
+                        batch_size=64,
+                        shuffle=True,
+                        num_workers=4,
+                        pin_memory=True,
+                        persistent_workers=True
+                    )
+
+                for batch in train_loader:
+                    batch_states = batch['state'].to(Constants.device, non_blocking=True)
+                    batch_actions = batch['action'].to(Constants.device, non_blocking=True)
+                    batch_rewards = batch['reward'].to(Constants.device, non_blocking=True)
+                    batch_log_probs = batch['log_prob'].to(Constants.device, non_blocking=True)
+
+                    self.ppo.update(batch_states=batch_states, batch_actions=batch_actions,
+                                     batch_rewards=batch_rewards, batch_logps=batch_log_probs, ep=episode, logging=logging)
                 self.memory.clear()
 
             print(f"Episode {(episode+1) * 100 / self.num_episodes}%")
