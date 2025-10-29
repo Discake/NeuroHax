@@ -29,16 +29,16 @@ class Training:
                 
                 # Выполняем действие в среде
                 next_state, reward, done = self.env.step(action)
-                d.draw()
-                pygame.display.update()
+                # d.draw()
+                # pygame.display.update()
                 
                 # Сохраняем в memory
                 self.memory.store(state, action, log_prob, reward, done)
                 
                 state = next_state
 
-            # if(np.array(self.memory.rewards).mean() > self.last_rewards):
-            self.save = torch.save(self.ppo.policy.state_dict(), f"{self.ppo.policy.name}.pth")
+            if(episode % 100 == 0):
+                self.save = torch.save(self.ppo.policy.state_dict(), f"{self.ppo.policy.name}.pth")
 
             # Когда собрали достаточно данных - обучаем
             if len(self.memory.states) >= self.batch_size:
