@@ -7,7 +7,6 @@ from Data_structure.Gates_data import Gates_data
 from Physics.WallCollision import WallCollision as Wall
 import Constants
 from Player_actions import Net_action
-from AI.SingleLayerNet import SingleLayerNet
 import copy
 
 class Enviroment:
