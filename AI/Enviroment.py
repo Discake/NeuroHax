@@ -74,7 +74,7 @@ class Enviroment:
             self.map.move_balls()
 
             self.count += 1
-            done = self.count > 500
+            done = self.count > 200
 
             # r = 0
             be_strict = True

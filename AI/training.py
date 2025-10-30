@@ -12,12 +12,12 @@ from Draw.Drawing import Drawing
 from Objects.Map import clone_and_detach_map
 
 import pygame
-import multiprocessing as mp
+import torch.multiprocessing as mp
 
 class Training:
     def __init__(self, env : Enviroment, train_loader, draw = False):
         self.num_episodes = 100
-        self.batch_size = 4096
+        self.batch_size = 4096 * 5
         self.memory = Memory()
         self.ppo = PPO(env.ai_action.translator.net)
         self.env = env
@@ -35,14 +35,31 @@ class Training:
 
         for episode in range(self.num_episodes):
             
-            state_dict = self.ppo.policy.state_dict()
-            env_map = [clone_and_detach_map(self.env.map) for _ in range(8)]
+            state_dict = self.ppo.policy.state_dict() # копии нейронки
+            env_map = [clone_and_detach_map(self.env.map) for _ in range(20)] # создание копии карты для обучения
 
-            args = [(env_map[i], state_dict) for i in range(8)]
-            # подготовьте разные карты: [(env_map1, ...), (env_map2, ...), ...]
+            # args = [(env_map[i], state_dict) for i in range(10)] # 
+            # # подготовьте разные карты: [(env_map1, ...), (env_map2, ...), ...]
 
-            with mp.Pool(processes=8) as pool:
-                results = pool.starmap(worker, args)
+            # with mp.Pool(processes=10) as pool:
+            #     results = pool.starmap(worker, args)
+            state_dict = self.ppo.policy.cpu().state_dict()
+        
+            processes = []
+            for i in range(20):
+              p = mp.Process(target=worker_torch, args=(i, env_map[i], state_dict))
+              p.start()
+              processes.append(p)
+        
+            # Сбор результатов
+            results = []
+            for p in processes:
+              p.join()
+              # Получить результат через shared memory или queue
+              results.append(p.exitcode)  # Или через Queue
+        
+            for p in processes:
+              p.close()
             
             # Слияние results = trajectories
 
@@ -85,10 +102,10 @@ class Training:
             if len(merged.actions) >= self.batch_size:
 
                 
-                states = torch.stack(merged.states)        # shape: (total_steps, state_size)
-                actions = torch.stack(merged.actions)
-                rewards = torch.tensor(merged.rewards)
-                log_probs = torch.tensor(merged.old_log_probs)
+                states = torch.stack(merged.states).to(Constants.device)        # shape: (total_steps, state_size)
+                actions = torch.stack(merged.actions).to(Constants.device)        
+                rewards = torch.tensor(merged.rewards).to(Constants.device)        
+                log_probs = torch.tensor(merged.old_log_probs).to(Constants.device)        
 
                 # dataset = TrajectoryDataset(states, actions, rewards, old_log_probs)
                 # self.train_loader = torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, shuffle=False)
@@ -132,7 +149,8 @@ def worker(env_map, state_dict):
     # 1. Инициализация своей среды, policy
     # env_map = clone_and_detach_map(env_map)
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = Constants.device
 
     nn = Maksigma_net()
     nn.load_state_dict(state_dict)
@@ -142,6 +160,21 @@ def worker(env_map, state_dict):
     # 2. Сбор trajectory
     traj = collect_trajectory(env, nn)
     return traj
+
+def worker_torch(rank, env_map, state_dict):
+    """Worker для torch.multiprocessing"""
+    torch.cuda.set_device(rank % torch.cuda.device_count())
+    
+    local_policy = Maksigma_net()
+    local_policy.load_state_dict(state_dict)
+    local_policy = local_policy.to(f'cuda:{rank % torch.cuda.device_count()}')
+    env = Enviroment(env_map, local_policy)
+    
+    experiences = collect_trajectory(env, local_policy)
+    
+    # Важно: перенести на CPU
+    experiences.to_device(Constants.device)
+    return experiences
 
 def merge_memories(memories):
     merged = Memory()

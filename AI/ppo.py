@@ -24,7 +24,7 @@ class PPO:
         self.lr_scheduler = torch.optim.lr_scheduler.StepLR(
             self.optimizer, step_size=1000, gamma=0.98)
 
-        self.K_epochs = 200  # Количество эпох оптимизации
+        self.K_epochs = 2048  # Количество эпох оптимизации
         self.eps_clip = 0.2  # Clipping parameter
 
         self.plotter = Reward_plotter()
