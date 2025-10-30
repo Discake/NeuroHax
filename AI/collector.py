@@ -84,8 +84,8 @@ class SharedMemoryExperienceCollector:
 
 
                 test2 = action.detach().flatten().cpu().numpy()
-                test3 = np.array([reward.flatten().detach().numpy().item()])
-                test4 = np.array([log_prob.flatten().detach().numpy().item()])
+                test3 = np.array([reward.flatten().cpu().detach().numpy().item()])
+                test4 = np.array([log_prob.flatten().cpu().detach().numpy().item()])
                 # Сохранить опыт (flattened)
                 experience_line = np.concatenate([
                     test1,  # 8 floats
