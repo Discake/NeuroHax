@@ -32,7 +32,7 @@ class SharedMemoryExperienceCollector:
 
             total_size = self.max_steps_per_worker * step_size
             
-            shm_name = f"ppo_experience_{i}"
+            shm_name = f"ppo_experience_kaggle_{i}"
             shm = shared_memory.SharedMemory(create=True, size=total_size, name=shm_name)
             self.shm_objects.append(shm)  # Сохраняем, чтобы не сборщик мусора удалил
             self.shm_names.append(shm_name)
@@ -170,8 +170,8 @@ class SharedMemoryExperienceCollector:
                     all_exp_rewards.append(float(reward))
                 # После чтения shared memory из всех процессов
                                 
-                # shm.close()
-                # shm.unlink()  # Очистка
+                shm.close()
+                shm.unlink()  # Очистка
                 
             except Exception as e:
                 print(f"Error reading shared memory {i}: {e}")
