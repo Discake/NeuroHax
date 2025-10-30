@@ -7,6 +7,7 @@ from AI.Maksigma_net import Maksigma_net
 from AI.Translator import Translator
 from AI.Environment import Environment
 from AI.memory import Memory
+import Constants
 from Objects.Map import Map
 
 class SharedMemoryExperienceCollector:
@@ -74,7 +75,7 @@ class SharedMemoryExperienceCollector:
             state = env.reset()
             while step < self.max_steps_per_worker and not done:  # Ваш цикл игры                
                 if torch.cuda.is_available():
-                    state = state.to(local_policy.device)
+                    state = state.to(Constants.device)
                 
                 action, log_prob = local_policy.select_action(state)
                 next_state, reward, done = env.step(action)
