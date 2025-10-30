@@ -2,7 +2,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 import pygame
 import torch
-from AI.Enviroment import Enviroment
+from AI.Environment import Environment
 from AI.Maksigma_net import Maksigma_net
 from AI.Reward_plotter import Reward_plotter
 from Draw.Drawing import Drawing
@@ -18,7 +18,7 @@ class reinforce:
         self.prev_loss = loss
         self.plotter = Reward_plotter(window_size=100)
 
-    def run_episode(self, env : Enviroment, policy : Maksigma_net, device="cpu"):
+    def run_episode(self, env : Environment, policy : Maksigma_net, device="cpu"):
         s = torch.as_tensor(env.reset())
         traj = {"logps": [], "rewards": [], "entropies": []}
         done = False

@@ -9,10 +9,10 @@ import Constants
 from Player_actions import Net_action
 import copy
 
-class Enviroment:
+class Environment:
     def __init__(self, map, nn):
         # Initialize Pygame
-
+        self.num_steps = 1024
         self.map = Map(Constants.field_size[0], Constants.field_size[1])
 
         self.map.add_players()
@@ -46,7 +46,6 @@ class Enviroment:
         dist = torch.abs(torch.sqrt(dx ** 2 + dy ** 2) - player.radius - ball.radius)
 
         self.prev_dist = dist
-        self.step_num = 0
         self.k_dist = 1
         self.kick_count = 1
         
@@ -73,8 +72,8 @@ class Enviroment:
         # with torch.no_grad():    
             self.map.move_balls()
 
+            done = self.count > self.num_steps
             self.count += 1
-            done = self.count > 200
 
             # r = 0
             be_strict = True

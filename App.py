@@ -11,7 +11,7 @@ from Player_actions.Net_action import Net_action
 from AI.SingleLayerNet import SingleLayerNet
 import copy
 from threading import Timer
-from AI.Enviroment import Enviroment
+from AI.Environment import Environment
 from AI.reinforce import reinforce
 import torch
 from AI.training import Training
@@ -196,6 +196,6 @@ class App:
 
         # nn = r.train(model, Enviroment(model), episodes=6000000000, batch_episodes=1, gamma=0.995, device="cpu")
 
-        t = Training(Enviroment(map, model), self.train_loader, draw=draw)
+        t = Training(Environment(map, model), self.train_loader, draw=draw)
         
         return t

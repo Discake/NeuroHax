@@ -4,9 +4,10 @@ import torch
 
 from AI.Maksigma_net import Maksigma_net
 from AI.TrajectoryDataset import TrajectoryDataset
+from AI.collector import SharedMemoryExperienceCollector
 from AI.memory import Memory
 from AI.ppo import PPO
-from AI.Enviroment import Enviroment
+from AI.Environment import Environment
 import Constants
 from Draw.Drawing import Drawing
 from Objects.Map import clone_and_detach_map
@@ -15,7 +16,7 @@ import pygame
 import torch.multiprocessing as mp
 
 class Training:
-    def __init__(self, env : Enviroment, train_loader, draw = False):
+    def __init__(self, env : Environment, train_loader, draw = False):
         self.num_episodes = 100
         self.batch_size = 4096 * 5
         self.memory = Memory()
@@ -32,34 +33,44 @@ class Training:
         self.logging = logging
 
         merged_list = []
+        collector = SharedMemoryExperienceCollector(num_workers=20, max_steps_per_worker=self.env.num_steps)
 
         for episode in range(self.num_episodes):
             
-            state_dict = self.ppo.policy.state_dict() # копии нейронки
-            env_map = [clone_and_detach_map(self.env.map) for _ in range(20)] # создание копии карты для обучения
+            # state_dict = self.ppo.policy.state_dict() # копии нейронки
+            # env_map = [clone_and_detach_map(self.env.map) for _ in range(20)] # создание копии карты для обучения
 
-            # args = [(env_map[i], state_dict) for i in range(10)] # 
-            # # подготовьте разные карты: [(env_map1, ...), (env_map2, ...), ...]
+            
+            # state_dict = self.ppo.policy.cpu().state_dict()
+        
+            # processes = []
+            # for i in range(20):
+            #   p = mp.Process(target=worker_torch, args=(i, env_map[i], state_dict))
+            #   p.start()
+            #   processes.append(p)
+        
+            # # Сбор результатов
+            # results = []
+            # for p in processes:
+            #   p.join()
+            #   # Получить результат через shared memory или queue
+            #   results.append(p.exitcode)  # Или через Queue
+        
+            # for p in processes:
+            #   p.close()
 
-            # with mp.Pool(processes=10) as pool:
-            #     results = pool.starmap(worker, args)
-            state_dict = self.ppo.policy.cpu().state_dict()
-        
-            processes = []
-            for i in range(20):
-              p = mp.Process(target=worker_torch, args=(i, env_map[i], state_dict))
-              p.start()
-              processes.append(p)
-        
-            # Сбор результатов
-            results = []
-            for p in processes:
-              p.join()
-              # Получить результат через shared memory или queue
-              results.append(p.exitcode)  # Или через Queue
-        
-            for p in processes:
-              p.close()
+
+            state_dict = self.ppo.policy.cpu().state_dict()  # CPU для безопасной передачи
+            env_maps = [clone_and_detach_map(self.env.map) for _ in range(20)]
+            
+            state_size = 8
+            experiences = collector.collect_experience_shared(state_dict, env_maps, state_size=state_size, action_size=3)
+            self.shm_objects1 = collector.shm_objects
+
+            
+            # Обновление PPO
+            if experiences:
+                self.ppo.update(experiences, ep=episode)
             
             # Слияние results = trajectories
 
@@ -96,33 +107,33 @@ class Training:
             # rewards = 
 
             
-            merged_list.append(merge_memories(results))
-            merged = merge_memories(merged_list)
-            # Когда собрали достаточно данных - обучаем
-            if len(merged.actions) >= self.batch_size:
+            # merged_list.append(merge_memories(results))
+            # merged = merge_memories(merged_list)
+            # # Когда собрали достаточно данных - обучаем
+            # if len(merged.actions) >= self.batch_size:
 
                 
-                states = torch.stack(merged.states).to(Constants.device)        # shape: (total_steps, state_size)
-                actions = torch.stack(merged.actions).to(Constants.device)        
-                rewards = torch.tensor(merged.rewards).to(Constants.device)        
-                log_probs = torch.tensor(merged.old_log_probs).to(Constants.device)        
+            #     states = torch.stack(merged.states).to(Constants.device)        # shape: (total_steps, state_size)
+            #     actions = torch.stack(merged.actions).to(Constants.device)        
+            #     rewards = torch.tensor(merged.rewards).to(Constants.device)        
+            #     log_probs = torch.tensor(merged.old_log_probs).to(Constants.device)        
 
-                # dataset = TrajectoryDataset(states, actions, rewards, old_log_probs)
-                # self.train_loader = torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, shuffle=False)
+            #     # dataset = TrajectoryDataset(states, actions, rewards, old_log_probs)
+            #     # self.train_loader = torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, shuffle=False)
 
-                # for batch in self.train_loader:
-                #     batch_states = batch['state'].to(Constants.device, non_blocking=True)
-                #     batch_actions = batch['action'].to(Constants.device, non_blocking=True)
-                #     batch_rewards = batch['reward'].to(Constants.device, non_blocking=True)
-                #     batch_log_probs = batch['log_prob'].to(Constants.device, non_blocking=True)
+            #     # for batch in self.train_loader:
+            #     #     batch_states = batch['state'].to(Constants.device, non_blocking=True)
+            #     #     batch_actions = batch['action'].to(Constants.device, non_blocking=True)
+            #     #     batch_rewards = batch['reward'].to(Constants.device, non_blocking=True)
+            #     #     batch_log_probs = batch['log_prob'].to(Constants.device, non_blocking=True)
 
-                self.ppo.update(batch_states=states, batch_actions=actions,
-                                     batch_rewards=rewards, batch_logps=log_probs, ep=episode, logging=self.logging)
+            #     self.ppo.update(batch_states=states, batch_actions=actions,
+            #                          batch_rewards=rewards, batch_logps=log_probs, ep=episode, logging=self.logging)
                     
                     
-                torch.save(self.ppo.policy.state_dict(), f"{self.ppo.policy.name}.pth")
-                self.memory.clear()
-                merged_list.clear()
+            #     torch.save(self.ppo.policy.state_dict(), f"{self.ppo.policy.name}.pth")
+            #     self.memory.clear()
+            #     merged_list.clear()
 
             print(f"Episode {(episode+1) * 100 / self.num_episodes}%")
 
@@ -155,7 +166,7 @@ def worker(env_map, state_dict):
     nn = Maksigma_net()
     nn.load_state_dict(state_dict)
     nn.to(device)
-    env = Enviroment(env_map, nn)
+    env = Environment(env_map, nn)
     
     # 2. Сбор trajectory
     traj = collect_trajectory(env, nn)
@@ -168,7 +179,7 @@ def worker_torch(rank, env_map, state_dict):
     local_policy = Maksigma_net()
     local_policy.load_state_dict(state_dict)
     local_policy = local_policy.to(f'cuda:{rank % torch.cuda.device_count()}')
-    env = Enviroment(env_map, local_policy)
+    env = Environment(env_map, local_policy)
     
     experiences = collect_trajectory(env, local_policy)
     

@@ -54,9 +54,13 @@ class PPO:
         returns.reverse()
         return returns
     
-    def update(self, batch_states, batch_actions, batch_rewards, batch_logps, ep, logging = True):
+    def update(self, memory : Memory, ep, logging = True):
         # Данные из траекторий
         #TODO
+        batch_rewards = memory.rewards
+        batch_states = memory.states
+        batch_actions = memory.actions
+        batch_logps = memory.old_log_probs
         
         # Вычисляем returns
         returns = self.compute_returns(batch_rewards)
