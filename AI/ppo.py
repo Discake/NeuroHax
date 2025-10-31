@@ -20,7 +20,8 @@ class PPO:
             self.policy_old = net
         self.policy_old.load_state_dict(self.policy.state_dict())
         
-        self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=0.5e-3)
+        # self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=0.5e-3)
+        self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=1e-3)
         self.lr_scheduler = torch.optim.lr_scheduler.StepLR(
             self.optimizer, step_size=1000, gamma=0.98)
 
@@ -37,90 +38,70 @@ class PPO:
         
         return action, log_prob  # Сохраняем log_prob
     
-    def compute_returns(self, rewards, gamma=1):
-        """
-        Args:
-            rewards: list of floats (награда за каждый timestep в эпизоде)
-            gamma: дисконтирующий множитель
-        
-        Returns:
-            returns: список float, такая же длина, где returns[t] = r_t + gamma*r_{t+1} + gamma^2*r_{t+2} + ...
-        """
+    def compute_returns_and_advantages(self, rewards, values, terminals, gamma=0.99, lam=0.95):
         returns = []
-        R = 0
-        for r in reversed(rewards):
-            R = r + gamma * R
-            returns.append(R)  # prepend
-        returns.reverse()
-        return returns
+        advantages = []
+        gae = 0
+        next_value = 0
+
+        for step in reversed(range(len(rewards))):
+            mask = 1.0 - terminals[step]
+            delta = rewards[step] + gamma * next_value * mask - values[step]
+            gae = delta + gamma * lam * mask * gae
+            advantages.insert(0, gae)
+            next_value = values[step]
+            returns.insert(0, gae + values[step])
+
+        return torch.tensor(returns, device=Constants.device), torch.tensor(advantages, device=Constants.device)
     
-    def update(self, memory : Memory, ep, logging = True):
-        # Данные из траекторий
-        #TODO
-        batch_rewards = memory.rewards
-        batch_states = memory.states
-        batch_actions = memory.actions
-        batch_logps = memory.old_log_probs
-        
-        # Вычисляем returns
-        returns = self.compute_returns(batch_rewards)
-        returns = torch.tensor(returns, device=Constants.device)
-        
-        # K эпох оптимизации
+    def update(self, memory: Memory, ep, logging=True):
+        # Перевод наград и terminals в тензоры
+        batch_rewards = torch.tensor(memory.rewards, device=Constants.device)
+        batch_states = torch.tensor(memory.states, device=Constants.device)
+        batch_actions = torch.tensor(memory.actions, device=Constants.device)
+        batch_logps = torch.tensor(memory.old_log_probs, device=Constants.device)
+        batch_terminals = torch.tensor(memory.is_terminals, dtype=torch.float32, device=Constants.device)
+
+        # Получаем current value оценку с помощью критика
+        with torch.no_grad():
+            _, batch_values, _ = self.policy.evaluate_actions(batch_states, batch_actions)
+
+        # Вычисляем returns и advantages по батчу
+        returns, advantages = self.compute_returns_and_advantages(batch_rewards, batch_values.squeeze(-1), batch_terminals)
+
+        # Нормализация advantages
+        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+
         for epoch in range(self.K_epochs):
-
             with torch.amp.autocast_mode.autocast(Constants.device.type):
+                new_log_probs, values, entropy = self.policy.evaluate_actions(batch_states, batch_actions)
 
-                # Вычисляем НОВЫЕ log_prob с текущей политикой
-                new_log_probs, values, entropy = self.policy.evaluate_actions(
-                    batch_states, batch_actions
-                )
-                
-                # ПРАВИЛЬНОЕ вычисление ratio (поэлементно!)
                 ratios = torch.exp(new_log_probs - batch_logps)
-                
-                # Мониторинг
                 mean_ratio = ratios.mean().item()
                 clipped_fraction = ((ratios < 0.8) | (ratios > 1.2)).float().mean()
-                
-                
-                # Advantages
-                advantages = returns - values.detach()
-                advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
-                
-                # PPO loss
+
                 surr1 = ratios * advantages
-                surr2 = torch.clamp(ratios, 1-self.eps_clip, 1+self.eps_clip) * advantages
+                surr2 = torch.clamp(ratios, 1 - self.eps_clip, 1 + self.eps_clip) * advantages
                 actor_loss = -torch.min(surr1, surr2).mean()
-                
-                critic_loss = F.mse_loss(values, returns)
+                critic_loss = F.mse_loss(values.squeeze(-1), returns)
                 entropy_loss = entropy.mean()
 
                 entropy_bonus = self.get_entropy_coef(ep) * entropy_loss
-                
                 loss = actor_loss + 0.5 * critic_loss - entropy_bonus
-            
-            # Обновляем policy (не policy_old!)
 
             self.optimizer.zero_grad(set_to_none=True)
             scaler.scale(loss).backward()
             scaler.step(self.optimizer)
             scaler.update()
 
-
-            # self.optimizer.zero_grad()
-            # loss.backward()
-            # self.optimizer.step()
             self.lr_scheduler.step()
             if logging:
                 print(f"Epoch {epoch}: mean_ratio={mean_ratio:.4f}, "
                     f"clipped={clipped_fraction:.2%}, new_log_prob = {new_log_probs.mean().item():.4f}")
-                print('Current learning rate:', self.optimizer.param_groups[0]['lr'])
 
         if logging:
-            self.plotter.update(ep, (returns - values.detach()).mean().detach().item())
-        
-        # После K эпох: обновляем старую политику
+            self.plotter.update(ep, (returns - batch_values.detach().squeeze(-1)).mean().detach().item())
+
         self.policy_old.load_state_dict(self.policy.state_dict())
         self.policy_old.to(Constants.device)
 

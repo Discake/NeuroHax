@@ -82,25 +82,17 @@ class Map:
                             self.wall_hit = True
 
 
-                    # if isinstance(ball, Player):
-                    #     for other_ball in team:
-                    #         if not isinstance(other_ball, Player) and ball.is_kicking:
-                    #             if isinstance(ball.position.x, torch.Tensor):
-                    #                 ball_pos = torch.stack([ball.position.x, ball.position.y])
-                    #             else:
-                    #                 ball_pos = torch.stack([ball.position.x, ball.position.y])
-
-                    #             if isinstance(other_ball.position.x, torch.Tensor):
-                    #                 other_ball_pos = torch.stack([other_ball.position.x, other_ball.position.y])
-                    #             else:
-                    #                 other_ball_pos = torch.stack([other_ball.position.x, other_ball.position.y])
+                    if isinstance(ball, Player):
+                        for other_ball in team:
+                            if not isinstance(other_ball, Player) and ball.is_kicking:
+                                ball_pos = ball.position
+                                other_ball_pos = other_ball.position
                                 
-                                
-                    #             direction = ball_pos - other_ball_pos
-                    #             dist = torch.linalg.vector_norm(direction)
-                    #             if dist < ball.radius + other_ball.radius + Constants.kick_radius:
-                    #                 ball.kick(other_ball, direction)
-                    #                 self.kick_flag = True
+                                direction = ball_pos - other_ball_pos
+                                dist = torch.linalg.vector_norm(direction)
+                                if dist < ball.radius + other_ball.radius + Constants.kick_radius:
+                                    ball.kick(other_ball, direction)
+                                    self.kick_flag = True
 
 
             

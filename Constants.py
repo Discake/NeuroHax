@@ -9,9 +9,9 @@ ball_radius = 30  # Radius of the ball
 player_mass = 300.0  # Mass of the player
 ball_mass = 300  # Mass of the ball
 max_player_speed = 3  # Maximum speed of the player
-max_ball_speed = 6.0  # Maximum speed of the ball
+max_ball_speed = 15.0  # Maximum speed of the ball
 time_increment = 1  # Time increment for movement
-speed_increment = 0.3 # Speed increment for the player
+speed_increment = 1 # Speed increment for the player
 
 iterations = 1 * round(time_increment)
 

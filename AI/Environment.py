@@ -116,9 +116,14 @@ class Environment:
             if not be_strict:
                  self.k_dist = 0.7
             
-            r = r + 1 * reward_prev_dist_less/ Constants.field_size[0]
+            # if self.k_dist < 0.9:
+            #     r = r + 1 * reward_prev_dist_less/ Constants.field_size[0] / self.k_dist
+            # else:
+            #     r = r + 1 * reward_prev_dist_less / Constants.field_size[0]
                 
-            r = r - 1 * reward_big_dist * self.k_dist / Constants.field_size[0]
+            # r = r - 1 * reward_big_dist * self.k_dist / Constants.field_size[0]
+
+            r = r + 1 * reward_prev_dist_less / Constants.field_size[0]
             # r -= 100 * reward_big_dist * self.k / (self.step_num - self.count + 100)
 
             # be_strict = ball.velocity.length() < 0.5
@@ -197,7 +202,7 @@ class Environment:
 
             self.prev_dist = dist
 
-            self.k_dist = 0.5 + 1 / dist
+            self.k_dist = 0.7 + 1 / dist
 
 
             self.step_num = dist * 1 * Constants.max_ball_speed / (Constants.speed_increment)

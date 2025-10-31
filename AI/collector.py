@@ -26,9 +26,9 @@ class SharedMemoryExperienceCollector:
         for i in range(self.num_workers):
             # Размер: N_steps × 5 (s, a, r, s', done) × size_state
             # Предполагаем state размером 40 (как для HaxBall)
-            step_size = state_size * 4 + action_size * 4 + 1 * 4 + 1 * 4  # bytes
+            step_size = state_size * 4 + action_size * 4 + 1 * 4 + 1 * 4 + 1 * 4 # bytes
 
-            self.step_size = state_size + action_size + 1 + 1
+            self.step_size = state_size + action_size + 1 + 1 + 1
 
             total_size = self.max_steps_per_worker * step_size
             
@@ -86,12 +86,14 @@ class SharedMemoryExperienceCollector:
                 test2 = action.detach().flatten().cpu().numpy()
                 test3 = np.array([reward.flatten().cpu().detach().numpy().item()])
                 test4 = np.array([log_prob.flatten().cpu().detach().numpy().item()])
+                test5 = np.array([1.0 if done else 0.0])
                 # Сохранить опыт (flattened)
                 experience_line = np.concatenate([
                     test1,  # 8 floats
                     test2,  # 3 floats
                     test3,  # 1 float
                     test4,  # 1 floats
+                    test5   # 1 float
                 ])
                 
 
@@ -127,6 +129,8 @@ class SharedMemoryExperienceCollector:
         """Основная функция: запуск worker'ов и сбор результатов"""
         if __name__ == '__main__':
             mp.set_start_method('spawn')
+
+        memories = []
         
         # Создание shared memory
         shm_names, shapes = self.create_shared_memory_blocks(state_size, action_size)
@@ -142,7 +146,7 @@ class SharedMemoryExperienceCollector:
             process_results = pool.starmap(self.worker_shared_memory, args)
         
         # Сбор данных из shared memory
-        all_exp_states, all_exp_actions, all_exp_log_probs, all_exp_rewards = [], [], [], []
+        all_exp_states, all_exp_actions, all_exp_log_probs, all_exp_rewards, all_exp_dones = [], [], [], [], []
         for i, shm_name in enumerate(shm_names):
             try:
                 # Открытие shared memory
@@ -164,24 +168,28 @@ class SharedMemoryExperienceCollector:
                     action = line[state_size:state_size + action_size]
                     reward = line[state_size + action_size]
                     log_prob = line[state_size + action_size + 1]  # если log_prob одиночный
+                    done = line[state_size + action_size + 2]  # если done одиночный
                     all_exp_states.append(state.tolist())      # или state.tolist()
                     all_exp_actions.append(action.tolist())
                     all_exp_log_probs.append(float(log_prob))  # если скаляр
                     all_exp_rewards.append(float(reward))
-                # После чтения shared memory из всех процессов
-                                
+                    all_exp_dones.append(float(done))
                 
                 
             except Exception as e:
                 print(f"Error reading shared memory {i}: {e}")
                 continue
         # all_experiences = merge_memories(all_experiences)
+
+        # После чтения shared memory из всех процессов
         merged = Memory()
         merged.states = all_exp_states
         merged.actions = all_exp_actions
         merged.old_log_probs = all_exp_log_probs
         merged.rewards = all_exp_rewards
+        merged.is_terminals = all_exp_dones
         merged.copy_to_tensors()
+        
 
         # for shm in self.shm_objects:
         #     shm.close()

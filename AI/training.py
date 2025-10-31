@@ -33,7 +33,7 @@ class Training:
         self.logging = logging
 
         merged_list = []
-        collector = SharedMemoryExperienceCollector(num_workers=1, max_steps_per_worker=self.env.num_steps)
+        collector = SharedMemoryExperienceCollector(num_workers=10, max_steps_per_worker=self.env.num_steps)
 
         for episode in range(self.num_episodes):
             
@@ -70,8 +70,7 @@ class Training:
             
             # Обновление PPO
             if experiences:
-                self.ppo.policy.to(Constants.device)
-                self.ppo.update(experiences, ep=episode)
+                self.ppo.update(experiences, episode, self.logging)
 
             for shm in collector.shm_objects:
                 shm.close()
