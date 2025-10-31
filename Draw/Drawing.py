@@ -15,7 +15,7 @@ class Drawing:
     
     def draw_ball(self, surface, circle_color, ball):
         """Draw a ball on the surface."""
-        pos_pair = ball.position.get_pair()
+        pos_pair = ball.position
         # if not self.is_env:
         #     pos_pair = ball.position[0].item(), ball.position[1].item()
         pygame.draw.circle(surface, circle_color, (pos_pair[0].detach().item(), pos_pair[1].detach().item()), ball.radius)
@@ -29,12 +29,15 @@ class Drawing:
         # pygame to draw the solid rectangle
         pygame.draw.rect(self.screen, Constants.field_color, [100, 100, map_obj.width, map_obj.height], 0)
         for gate in map_obj.gates:
-            x = (gate.position.x).detach().item()
-            y = (gate.position.y - gate.outer_height / 2).detach().item()
+            gate_pos = gate.position.detach().tolist()
+
+            x = gate_pos[0]
+            y = gate_pos[1] - gate.outer_height / 2
             pygame.draw.rect(self.screen, gate.outer_color, [x, y, gate.outer_width, gate.outer_height], 0)
 
-            x2 = (gate.position.x - gate.add_pos.x).detach().item()
-            y2 = (gate.position.y - gate.add_pos.y).detach().item()
+            gate_pos2 = (gate.position - gate.add_pos).detach().tolist()
+            x2 = gate_pos2[0]
+            y2 = gate_pos2[1]
             pygame.draw.rect(self.screen, gate.inner_color, [x2, y2, gate.inner_width, gate.inner_height], 0)
         #     gate.draw()
 

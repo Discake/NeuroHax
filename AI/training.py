@@ -33,7 +33,7 @@ class Training:
         self.logging = logging
 
         merged_list = []
-        collector = SharedMemoryExperienceCollector(num_workers=20, max_steps_per_worker=self.env.num_steps)
+        collector = SharedMemoryExperienceCollector(num_workers=1, max_steps_per_worker=self.env.num_steps)
 
         for episode in range(self.num_episodes):
             
@@ -61,7 +61,7 @@ class Training:
 
 
             state_dict = self.ppo.policy.cpu().state_dict()  # CPU для безопасной передачи
-            env_maps = [clone_and_detach_map(self.env.map) for _ in range(20)]
+            env_maps = [clone_and_detach_map(self.env.map) for _ in range(collector.num_workers)]
             
             state_size = 8
             experiences = collector.collect_experience_shared(state_dict, env_maps, state_size=state_size, action_size=3)
@@ -71,6 +71,10 @@ class Training:
             # Обновление PPO
             if experiences:
                 self.ppo.update(experiences, ep=episode)
+
+            for shm in collector.shm_objects:
+                shm.close()
+                shm.unlink()
             
             # Слияние results = trajectories
 

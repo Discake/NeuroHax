@@ -75,7 +75,7 @@ class App:
 
     def add_walls(self):
         walls = [Constants.wall1, Constants.wall2, Constants.wall3, Constants.wall4, Constants.wall5, 
-                 Constants.wall6, Constants.wall7, Constants.wall8, Constants.wall9, Constants.wall10]
+                 Constants.wall6]
         for wall in walls:
             self.map.add_wall(Wall(wall.start, wall.end, wall.constant, wall.is_vertical))
 

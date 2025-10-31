@@ -6,6 +6,8 @@ import numpy as np
 import copy
 import random
 
+from Physics.WallCollision import WallCollision
+
 class Map:
     def __init__(self, width, height):
         self.width = width
@@ -26,7 +28,7 @@ class Map:
     def add_gate(self, gate):
         self.gates.append(gate)
 
-    def add_wall(self, wall):
+    def add_wall(self, wall : WallCollision):
         self.walls.append(wall)
 
     
@@ -72,32 +74,33 @@ class Map:
 
                     for gate in self.gates:
                         for line in gate.boundaries:
-                            line.resolve_collision(ball)
+                            if line.detect_collision(ball):
+                                line.resolve_collision(ball)
                     for wall in self.walls:
                         if wall.detect_collision(ball):
                             wall.resolve_collision(ball)
                             self.wall_hit = True
 
 
-                    if isinstance(ball, Player):
-                        for other_ball in team:
-                            if not isinstance(other_ball, Player) and ball.is_kicking:
-                                if isinstance(ball.position.x, torch.Tensor):
-                                    ball_pos = torch.stack([ball.position.x, ball.position.y])
-                                else:
-                                    ball_pos = torch.stack([ball.position.x, ball.position.y])
+                    # if isinstance(ball, Player):
+                    #     for other_ball in team:
+                    #         if not isinstance(other_ball, Player) and ball.is_kicking:
+                    #             if isinstance(ball.position.x, torch.Tensor):
+                    #                 ball_pos = torch.stack([ball.position.x, ball.position.y])
+                    #             else:
+                    #                 ball_pos = torch.stack([ball.position.x, ball.position.y])
 
-                                if isinstance(other_ball.position.x, torch.Tensor):
-                                    other_ball_pos = torch.stack([other_ball.position.x, other_ball.position.y])
-                                else:
-                                    other_ball_pos = torch.stack([other_ball.position.x, other_ball.position.y])
+                    #             if isinstance(other_ball.position.x, torch.Tensor):
+                    #                 other_ball_pos = torch.stack([other_ball.position.x, other_ball.position.y])
+                    #             else:
+                    #                 other_ball_pos = torch.stack([other_ball.position.x, other_ball.position.y])
                                 
                                 
-                                direction = ball_pos - other_ball_pos
-                                dist = torch.linalg.vector_norm(direction)
-                                if dist < ball.radius + other_ball.radius + Constants.kick_radius:
-                                    ball.kick(other_ball, direction)
-                                    self.kick_flag = True
+                    #             direction = ball_pos - other_ball_pos
+                    #             dist = torch.linalg.vector_norm(direction)
+                    #             if dist < ball.radius + other_ball.radius + Constants.kick_radius:
+                    #                 ball.kick(other_ball, direction)
+                    #                 self.kick_flag = True
 
 
             
@@ -137,13 +140,12 @@ class Map:
 
 
         if is_right:
-            self.ball_teams[0][0].position.x = Constants.players_positions_team1[0].x
+            self.ball_teams[0][0].position[0] = Constants.players_positions_team1[0][0]
         else:
-            self.ball_teams[0][0].position.x = Constants.players_positions_team2[0].x
-        self.ball_teams[0][0].position.y = torch.tensor(Constants.field_margin / 2 + y_pos).to(Constants.device)
+            self.ball_teams[0][0].position[0] = Constants.players_positions_team2[0][0]
+        self.ball_teams[0][0].position[1] = Constants.field_margin / 2 + y_pos
 
-        self.ball_teams[0][1].position.x = torch.tensor(Constants.x_center).to(Constants.device)
-        self.ball_teams[0][1].position.y = torch.tensor(Constants.y_center).to(Constants.device)
+        self.ball_teams[0][1].position = torch.tensor([Constants.x_center, Constants.y_center], device=Constants.device)
         # self.players.clear()
         # for team in self.ball_teams:
         #     for i in range(len(team) - 1):

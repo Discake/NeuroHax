@@ -170,8 +170,7 @@ class SharedMemoryExperienceCollector:
                     all_exp_rewards.append(float(reward))
                 # После чтения shared memory из всех процессов
                                 
-                shm.close()
-                shm.unlink()  # Очистка
+                
                 
             except Exception as e:
                 print(f"Error reading shared memory {i}: {e}")
@@ -183,6 +182,10 @@ class SharedMemoryExperienceCollector:
         merged.old_log_probs = all_exp_log_probs
         merged.rewards = all_exp_rewards
         merged.copy_to_tensors()
+
+        # for shm in self.shm_objects:
+        #     shm.close()
+        #     shm.unlink()
         return merged
 
 def merge_memories(memories):

@@ -14,10 +14,6 @@ class Translator:
         self.output = [0, 0, 0]
         self.index = index
 
-        self.count = 1
-        self.x_sum = 0
-        self.y_sum = 0
-
     def translate_input(self):
         # ball = self.map.balls[-1]
 
@@ -29,15 +25,15 @@ class Translator:
             ball = self.map.ball_teams[self.index][i]
 
             if isinstance(ball, Player):
-                input[4 * i] = (ball.position.x - Constants.x_center) / (maximum)
-                input[4 * i + 1] = (ball.position.y - Constants.y_center) / (maximum)
-                input[4 * i + 2] = (ball.velocity.x) / Constants.max_player_speed / 2
-                input[4 * i + 3] = (ball.velocity.y) / Constants.max_player_speed / 2
+                input[4 * i] = (ball.position[0] - Constants.x_center) / (maximum)
+                input[4 * i + 1] = (ball.position[1] - Constants.y_center) / (maximum)
+                input[4 * i + 2] = (ball.velocity[0]) / Constants.max_player_speed / 2
+                input[4 * i + 3] = (ball.velocity[1]) / Constants.max_player_speed / 2
             else:
-                input[4 * i] = (ball.position.x - Constants.x_center) / (maximum)
-                input[4 * i + 1] = (ball.position.y - Constants.y_center) / (maximum)
-                input[4 * i + 2] = (ball.velocity.x) / Constants.max_ball_speed / 2
-                input[4 * i + 3] = (ball.velocity.y) / Constants.max_ball_speed / 2
+                input[4 * i] = (ball.position[0] - Constants.x_center) / (maximum)
+                input[4 * i + 1] = (ball.position[1] - Constants.y_center) / (maximum)
+                input[4 * i + 2] = (ball.velocity[0]) / Constants.max_ball_speed / 2
+                input[4 * i + 3] = (ball.velocity[1]) / Constants.max_ball_speed / 2
                 
 
         input = torch.stack(input)
@@ -72,8 +68,8 @@ class Translator:
 
         # a = action.tolist()
         # with torch.no_grad():
-        # self.map.ball_teams[self.index][0].velocity.x = self.map.ball_teams[0][0].velocity.x + Constants.speed_increment * action[0]
-        # self.map.ball_teams[self.index][0].velocity.y = self.map.ball_teams[0][0].velocity.y + Constants.speed_increment * action[1]
+        # self.map.ball_teams[self.index][0].velocity[0] = self.map.ball_teams[0][0].velocity[0] + Constants.speed_increment * action[0]
+        # self.map.ball_teams[self.index][0].velocity[1] = self.map.ball_teams[0][0].velocity[1] + Constants.speed_increment * action[1]
         # self.map.ball_teams[self.index][0].set_kicking(action[2] > 0)
 
         return action, logp, entropy

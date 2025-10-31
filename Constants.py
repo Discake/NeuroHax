@@ -1,5 +1,4 @@
 import torch
-from Data_structure.Validable_vector import Validable_vector
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -9,10 +8,10 @@ player_radius = 30  # Radius of the player
 ball_radius = 30  # Radius of the ball
 player_mass = 300.0  # Mass of the player
 ball_mass = 300  # Mass of the ball
-max_player_speed = 100  # Maximum speed of the player
+max_player_speed = 3  # Maximum speed of the player
 max_ball_speed = 6.0  # Maximum speed of the ball
 time_increment = 1  # Time increment for movement
-speed_increment = 3 # Speed increment for the player
+speed_increment = 0.3 # Speed increment for the player
 
 iterations = 1 * round(time_increment)
 
@@ -65,9 +64,9 @@ for i in range(player_number):
     players_y_positions.append(player_y_position_from_center + player_y_increment * (i + 1) * (-1 if i % 2 == 0 else 1))
     balls_y_positions.append(ball_y_position_from_center + ball_y_increment * (i + 1) * (-1 if i % 2 == 0 else 1))
 
-players_positions_team1 = [Validable_vector(torch.tensor(player_x_position_from_center_team1 + x_center, dtype=torch.float32).to(device), torch.tensor(y + y_center, dtype=torch.float32).to(device)) for y in players_y_positions]
-players_positions_team2 = [Validable_vector(torch.tensor(player_x_position_from_center_team2 + x_center, dtype=torch.float32).to(device), torch.tensor(y + y_center, dtype=torch.float32).to(device)) for y in players_y_positions]
-balls_positions = [Validable_vector(torch.tensor(ball_x_position_from_center + x_center, dtype=torch.float32).to(device), torch.tensor(y + y_center, dtype=torch.float32).to(device)) for y in balls_y_positions]
+players_positions_team1 = [(torch.tensor([player_x_position_from_center_team1 + x_center, y + y_center], dtype=torch.float32).to(device)) for y in players_y_positions]
+players_positions_team2 = [(torch.tensor([player_x_position_from_center_team2 + x_center, y + y_center], dtype=torch.float32).to(device)) for y in players_y_positions]
+balls_positions = [(torch.tensor([ball_x_position_from_center + x_center, y + y_center], dtype=torch.float32).to(device)) for y in balls_y_positions]
 
 # Gates positions
 
@@ -100,11 +99,11 @@ def set_wall(x, y, width, height, is_vertical):
             self.is_vertical = is_vertical
 
     wall = Wall(is_vertical)
-    wall.start = Validable_vector(x, y)
-    wall.end = Validable_vector(x + width, y + height)
+    wall.start = torch.tensor([x, y], dtype=torch.float32).to(device)
+    wall.end = torch.tensor([x + width, y + height], dtype=torch.float32).to(device)
 
-    wall.start = wall.start.y if wall.is_vertical else wall.start.x
-    wall.end = wall.end.y if wall.is_vertical else wall.end.x
+    wall.start = wall.start[1] if wall.is_vertical else wall.start[0]
+    wall.end = wall.end[1] if wall.is_vertical else wall.end[0]
     wall.constant = x if wall.is_vertical else y
     return wall
 
@@ -119,8 +118,8 @@ wall4 = set_wall(field_margin / 2 + field_size[0], field_margin / 2 + field_size
 wall5 = set_wall(field_margin / 2, field_margin / 2, field_size[0], field_size[1], False) #top
 wall6 = set_wall(field_margin / 2, field_margin / 2 + field_size[1], field_size[0], field_size[1], False)#bottom
 
-wall7 = set_wall(0, 0, window_size[0], 0, False)
-wall8 = set_wall(0, 0, 0, window_size[1], True)
+# wall7 = set_wall(0, 0, window_size[0], 0, False)
+# wall8 = set_wall(0, 0, 0, window_size[1], True)
 
-wall9 = set_wall(window_size[0], 0, window_size[0], window_size[1], True)
-wall10 = set_wall(0, window_size[1], window_size[0], window_size[1], False)
+# wall9 = set_wall(window_size[0], 0, window_size[0], window_size[1], True)
+# wall10 = set_wall(0, window_size[1], window_size[0], window_size[1], False)

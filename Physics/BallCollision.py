@@ -1,5 +1,7 @@
 import torch
 
+import Constants
+
 class BallCollision():
     
     def __init__(self, object1):
@@ -11,10 +13,8 @@ class BallCollision():
         ball1 = self.object1
         ball2 = object2
 
-        dx = ball1.position.x - ball2.position.x
-        dy = ball1.position.y - ball2.position.y
         # Квадрат расстояния между центрами шаров
-        distance_squared = dx * dx + dy * dy
+        distance_squared = torch.dot(ball1.position - ball2.position, ball1.position - ball2.position)
         
         # Квадрат суммы радиусов
         radius_sum_squared = (ball1.radius + ball2.radius) ** 2
@@ -30,43 +30,53 @@ class BallCollision():
     def resolve_collision_rotation(self, ball2):
         ball1 = self.object1
 
-        """Разрешение столкновения методом вращения векторов"""
-        # Угол между шарами
-        dx = ball2.position.x - ball1.position.x
-        dy = ball2.position.y - ball1.position.y
-        angle = torch.atan2(dy, dx)
-        
-        # Поворачиваем векторы скоростей на угол -theta
+        """Разрешение столкновения методом вращения векторов с учетом масс"""
+
+        # Вектор между центрами шаров (направление удара)
+        delta = ball2.position - ball1.position  # torch.tensor([dx, dy])
+        angle = torch.atan2(delta[1], delta[0])
+
+        # Матрица перехода к "ударной" системе координат
         cos_angle = torch.cos(angle)
         sin_angle = torch.sin(angle)
-        
-        # Повернутые скорости первого шара
-        v1x_rot = ball1.velocity.x * cos_angle + ball1.velocity.y * sin_angle
-        v1y_rot = ball1.velocity.y * cos_angle - ball1.velocity.x * sin_angle
-        
-        # Повернутые скорости второго шара
-        v2x_rot = ball2.velocity.x * cos_angle + ball2.velocity.y * sin_angle
-        v2y_rot = ball2.velocity.y * cos_angle - ball2.velocity.x * sin_angle
-        
-        # Применяем 1D формулы упругого столкновения к X-компонентам
+        rotation = torch.tensor([
+            [cos_angle, sin_angle],
+            [-sin_angle, cos_angle]
+        ], device=Constants.device)
+
+        # Приведение скоростей (velocity [2]) к локальным координатам
+        v1_rot = torch.matmul(rotation, ball1.velocity)
+        v2_rot = torch.matmul(rotation, ball2.velocity)
+
+        # Извлекаем массы шаров
         m1 = ball1.mass
         m2 = ball2.mass
-        
-        v1x_final = ((m1 - m2) * v1x_rot + 2 * m2 * v2x_rot) / (m1 + m2)
-        v2x_final = ((m2 - m1) * v2x_rot + 2 * m1 * v1x_rot) / (m1 + m2)
-        
-        # Y-компоненты не изменяются
-        v1y_final = v1y_rot
-        v2y_final = v2y_rot
-        
-        # Поворачиваем обратно на угол +theta
-        ball1.velocity.x = v1x_final * cos_angle - v1y_final * sin_angle
-        ball1.velocity.y = v1y_final * cos_angle + v1x_final * sin_angle
-        ball2.velocity.x = v2x_final * cos_angle - v2y_final * sin_angle
-        ball2.velocity.y = v2y_final * cos_angle + v2x_final * sin_angle
 
-        ball1.velocity *= 0.95 # затухание
-        ball2.velocity *= 0.95
+        # Компоненты вдоль направления столкновения (axis x)
+        u1 = v1_rot[0]
+        u2 = v2_rot[0]
+
+        # Классическая формула обмена импульсом с учетом масс
+        v1_x_new = (u1 * (m1 - m2) + 2 * m2 * u2) / (m1 + m2)
+        v2_x_new = (u2 * (m2 - m1) + 2 * m1 * u1) / (m1 + m2)
+
+        # Перпендикулярные компоненты (axis y) не меняются
+        v1_y_new = v1_rot[1]
+        v2_y_new = v2_rot[1]
+
+        # Склеиваем новые скорости в локальных координатах
+        v1_rot_new = torch.tensor([v1_x_new, v1_y_new], device=Constants.device)
+        v2_rot_new = torch.tensor([v2_x_new, v2_y_new], device=Constants.device)
+
+        # Обратная матрица поворота в глобальные координаты
+        rotation_inv = torch.tensor([
+            [cos_angle, -sin_angle],
+            [sin_angle, cos_angle]
+        ], device=Constants.device)
+
+        # Преобразуем обратно
+        ball1.velocity = torch.matmul(rotation_inv, v1_rot_new)
+        ball2.velocity = torch.matmul(rotation_inv, v2_rot_new)
 
     def separate_balls_with_mass(self, ball2):
         """
@@ -77,31 +87,29 @@ class BallCollision():
 
         ball1 = self.object1
 
-        dx = ball2.position.x - ball1.position.x
-        dy = ball2.position.y - ball1.position.y
-        distance = torch.sqrt(dx * dx + dy * dy)
+        d = ball2.position - ball1.position
+        distance = d.norm()
         
         # Предотвращаем деление на ноль
         if distance == 0:
             distance = 0.0001
-            dx = 0.0001
         
         # Величина перекрытия
         overlap = (ball1.radius + ball2.radius) - distance
         
         if overlap > 0:
             # Нормализованный вектор разделения
-            nx = dx * 2 / distance
-            ny = dy * 2 / distance
+            nx = d[0] * 3 / distance
+            ny = d[1] * 3 / distance
             
             # Распределяем смещение пропорционально массам
             # Более тяжелый объект движется меньше
             total_mass = ball1.mass + ball2.mass
             ratio1 = ball2.mass / total_mass
             ratio2 = ball1.mass / total_mass
+
+            overlap_vector = torch.tensor([overlap * nx, overlap * ny], device=Constants.device)
             
             # Смещаем каждый шар
-            ball1.position.x = ball1.position.x - overlap * ratio1 * nx 
-            ball1.position.y = ball1.position.y - overlap * ratio1 * ny
-            ball2.position.x = ball2.position.x + overlap * ratio2 * nx
-            ball2.position.y = ball2.position.y + overlap * ratio2 * ny 
+            ball1.position = ball1.position - ratio1 * overlap_vector
+            ball2.position = ball2.position + ratio2 * overlap_vector

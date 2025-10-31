@@ -41,9 +41,8 @@ class Environment:
         player = self.map.ball_teams[0][0]
         ball = self.map.ball_teams[0][1]
 
-        dx = torch.abs(player.position.x - ball.position.x)
-        dy = torch.abs(player.position.y - ball.position.y)
-        dist = torch.abs(torch.sqrt(dx ** 2 + dy ** 2) - player.radius - ball.radius)
+        d = player.position - ball.position
+        dist = torch.abs(d.norm() - player.radius - ball.radius)
 
         self.prev_dist = dist
         self.k_dist = 1
@@ -60,7 +59,7 @@ class Environment:
 
     def add_walls(self):
         walls = [Constants.wall1, Constants.wall2, Constants.wall3, Constants.wall4, Constants.wall5, 
-                 Constants.wall6, Constants.wall7, Constants.wall8, Constants.wall9, Constants.wall10]
+                 Constants.wall6]
         for wall in walls:
             self.map.add_wall(Wall(wall.start, wall.end, wall.constant, wall.is_vertical))
 
@@ -95,10 +94,10 @@ class Environment:
 
             player = self.map.ball_teams[0][0]
             ball = self.map.ball_teams[0][1]
-            dx = (player.position.x - ball.position.x)
-            dy = (player.position.y - ball.position.y)
+            d = player.position - ball.position
+
             
-            dist = (torch.sqrt(dx ** 2 + dy ** 2) - player.radius - ball.radius)
+            dist = (d.norm() - player.radius - ball.radius)
             
             # r = r - torch.sqrt(player.velocity.x ** 2 + player.velocity.y ** 2) / Constants.max_player_speed
             # r = r + torch.sqrt(ball.velocity.x ** 2 + ball.velocity.y ** 2) / Constants.max_ball_speed
@@ -192,9 +191,9 @@ class Environment:
             player = self.map.ball_teams[0][0]
             ball = self.map.ball_teams[0][1]
 
-            dx = torch.abs(player.position.x - ball.position.x)
-            dy = torch.abs(player.position.y - ball.position.y)
-            dist = torch.abs(torch.sqrt(dx ** 2 + dy ** 2) - player.radius - ball.radius)
+            d = player.position - ball.position
+
+            dist = torch.abs(d.norm() - player.radius - ball.radius)
 
             self.prev_dist = dist
 

@@ -1,11 +1,10 @@
 import torch
 from Physics.Movable import Movable
 import Constants
-from Data_structure.Validable_vector import Validable_vector
 
 class Ball (Movable):
     def __init__(self, position, radius, mass, max_velocity):
-        init_velocity = Validable_vector(torch.tensor(0.).to(Constants.device), torch.tensor(0.).to(Constants.device))
+        init_velocity = torch.tensor([0., 0.]).to(Constants.device)
         super().__init__(position, velocity=init_velocity, max_velocity=max_velocity)
         self.radius = radius
         self.mass = mass
