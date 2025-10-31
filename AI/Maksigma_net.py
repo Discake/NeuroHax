@@ -11,13 +11,13 @@ class Maksigma_net(nn.Module):
         self.shared = nn.Sequential(
             nn.Linear(state_dim, hidden_dim),
             nn.Tanh(),
-        )
+        ).to(device=Constants.device)
         
         # --- Actor Head for velocity (continuous 2D) ---
         self.actor_velocity = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
             nn.Tanh(),
-        )
+        ).to(device=Constants.device)
         self.velocity_mean = nn.Linear(hidden_dim, 2)      # output: [mu_x, mu_y]
         self.velocity_log_sigma = nn.Linear(hidden_dim, 2) # output: [log_sigma_x, log_sigma_y]
 
@@ -25,7 +25,7 @@ class Maksigma_net(nn.Module):
         self.actor_kick = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
             nn.Tanh(),
-        )
+        ).to(device=Constants.device)
         self.kick_logit = nn.Linear(hidden_dim, 1)         # output: логит (до sigmoid)
 
         # --- Critic Head (state value) ---
@@ -33,7 +33,7 @@ class Maksigma_net(nn.Module):
             nn.Linear(hidden_dim, hidden_dim),
             nn.Tanh(),
             nn.Linear(hidden_dim, 1),                      # output: скаляр value
-        )
+        ).to(device=Constants.device)
 
     def forward(self, state):
         x = self.shared(state)  # [batch, hidden]
