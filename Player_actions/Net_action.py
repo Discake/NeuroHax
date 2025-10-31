@@ -6,9 +6,9 @@ from AI.Translator import Translator
 from AI.Maksigma_net import Maksigma_net
 
 class Net_action(Player_action):
-    def __init__(self, nn : Maksigma_net, map : Map, index):
+    def __init__(self, nn : Maksigma_net, map : Map):
         self.nn = nn
-        self.translator = Translator(map, nn, index)
+        self.translator = Translator(map, nn)
         self.map = map
         self.hit_flag = False
         self.count = 1

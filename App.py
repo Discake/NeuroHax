@@ -34,48 +34,10 @@ class App:
         self.play = play
         self.train = train
 
-        self.map = Map(Constants.field_size[0], Constants.field_size[1])
+        self.map = Map()
         self.drawing = Drawing(self.map)
 
-        self.map.add_players()
-        self.map.add_balls()
-        
-        teams = []
-        
-        self.teams_number = 10
-
-        if train or play:
-            self.teams_number = 1
-
-        for i in range(self.teams_number):
-            teams.append(copy.deepcopy(self.map.balls))
-
-        self.map.set_ball_teams(teams)
-
-        self.add_gates()
-        self.add_walls()
-
-        pygame.display.set_caption("Hello MAZAFAKA")
-        self.map.save_state()
-
-        self.traj_list = []
-        
-        for _ in range(self.teams_number):
-            self.traj_list.append({"logps" : float, "rewards" : []})
-
-    def add_gates(self):
-        gates_data = [Gates_data(is_left=True), Gates_data(is_left=False)]
-        for data in gates_data:
-            gate = Gate(data)
-            # gate.set_screen(self.drawing.screen)
-            gate.add_boundaries()
-            self.map.add_gate(gate)
-
-    def add_walls(self):
-        walls = [Constants.wall1, Constants.wall2, Constants.wall3, Constants.wall4, Constants.wall5, 
-                 Constants.wall6]
-        for wall in walls:
-            self.map.add_wall(Wall(wall.start, wall.end, wall.constant, wall.is_vertical))
+        pygame.display.set_caption("NeuroHax")
 
     def start_single_game(self):
         
@@ -113,19 +75,18 @@ class App:
         actions = []
         
         if not self.play and not self.train:
-            for j in range(self.teams_number):
-                for i in range(Constants.player_number - 1 if self.play and j == 0 else Constants.player_number):
-                    # if i == 0 and j == 0:
-                    #     nn = self.train()
-                    nn = Maksigma_net()
-                    nn.load_state_dict(torch.load(f'Maksigma_net_ravnykh_new_method.pth'))
-                    nn = nn.eval()
-                    ai_action = Net_action(nn, self.map, j)
-                    actions.append(ai_action)
+            for i in range(Constants.player_number - 1 if self.play else Constants.player_number):
+                nn = Maksigma_net()
+                nn.load_state_dict(torch.load(f'Maksigma_net_ravnykh_new_method.pth'))
+                nn = nn.eval()
+                ai_action = Net_action(nn, self.map)
+                ai_action.set_player(self.map.players_team1[i])
+                actions.append(ai_action)
             
         if self.play:
             keydown_action = Keydown_action()
             actions.append(keydown_action)
+            keydown_action.set_player(self.map.players_team1[0])
 
         if self.train:
             # torch.autograd.set_detect_anomaly(True)
@@ -139,7 +100,7 @@ class App:
         if self.draw:
             # Game loop
             while running:
-                pygame.time.delay(5)  # Pause for 5 milliseconds
+                pygame.time.delay(7)  # Pause for 5 milliseconds
 
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
@@ -147,23 +108,15 @@ class App:
                     for action in actions:
                         if isinstance(action, Keydown_action):
                             action.set_event(event)
-                
-                # for i in range(len(actions)):
-                #     if isinstance(actions[i], Net_action):
-                #         actions[i].update_translator()
 
-                for j in range(self.teams_number):
-                    for i in range(Constants.player_number):
-                        action = actions[i + j * Constants.player_number]
+                for action in actions:
+                    if isinstance(action, Net_action):
+                        inp, _, _ = action.translator.translate_output(action.translator.translate_input())
+                        action.act(inp)
+                    else:
+                        action.act()
 
-                        if isinstance(action, Net_action):
-                            action.set_player(self.map.ball_teams[j][i])
-                            # action.update_translator()
-                            inp, _, _ = action.translator.translate_output(action.translator.translate_input())
-                            action.act(inp)
-                        else:
-                            action.set_player(self.map.ball_teams[0][0])
-                            action.act()
+                    
 
 
                 self.drawing.draw()

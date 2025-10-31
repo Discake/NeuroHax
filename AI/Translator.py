@@ -16,25 +16,38 @@ class Translator:
         # ball = self.map.balls[-1]
 
         # self.input = self.input.detach().clone()
-        input = [0, 0, 0, 0, 0, 0, 0, 0]
+        input1 = [0, 0, 0, 0, 0, 0, 0, 0]
+        input2 = [0, 0, 0, 0, 0, 0, 0, 0]
+        input3 = [0, 0, 0, 0, 0, 0, 0, 0]
         maximum = Constants.field_size[1]
-        
-        for i in range(len(self.map.ball_teams[self.index])):
-            ball = self.map.ball_teams[self.index][i]
 
-            if isinstance(ball, Player):
-                input[4 * i] = (ball.position[0] - Constants.x_center) / (maximum)
-                input[4 * i + 1] = (ball.position[1] - Constants.y_center) / (maximum)
-                input[4 * i + 2] = (ball.velocity[0]) / Constants.max_player_speed / 2
-                input[4 * i + 3] = (ball.velocity[1]) / Constants.max_player_speed / 2
-            else:
-                input[4 * i] = (ball.position[0] - Constants.x_center) / (maximum)
-                input[4 * i + 1] = (ball.position[1] - Constants.y_center) / (maximum)
-                input[4 * i + 2] = (ball.velocity[0]) / Constants.max_ball_speed / 2
-                input[4 * i + 3] = (ball.velocity[1]) / Constants.max_ball_speed / 2
+        
+        for i in range(len(self.map.players_team1)):
+            ball = self.map.players_team1[i]
+            
+            input1[4 * i] = (ball.position[0] - Constants.x_center) / (maximum)
+            input1[4 * i + 1] = (ball.position[1] - Constants.y_center) / (maximum)
+            input1[4 * i + 2] = (ball.velocity[0]) / Constants.max_player_speed / 2
+            input1[4 * i + 3] = (ball.velocity[1]) / Constants.max_player_speed / 2
+
+        for i in range(len(self.map.players_team2)):
+            player = self.map.players_team2[i]
+            
+            input2[4 * i] = (player.position[0] - Constants.x_center) / (maximum)
+            input2[4 * i + 1] = (player.position[1] - Constants.y_center) / (maximum)
+            input2[4 * i + 2] = (player.velocity[0]) / Constants.max_player_speed / 2
+            input2[4 * i + 3] = (player.velocity[1]) / Constants.max_player_speed / 2
+        
+        for i in range(len(self.map.balls)):
+            ball = self.map.balls[i]
+            
+            input3[4 * i] = (ball.position[0] - Constants.x_center) / (maximum)
+            input3[4 * i + 1] = (ball.position[1] - Constants.y_center) / (maximum)
+            input3[4 * i + 2] = (ball.velocity[0]) / Constants.max_ball_speed / 2
+            input3[4 * i + 3] = (ball.velocity[1]) / Constants.max_ball_speed / 2
                 
 
-        input = torch.stack(input)
+        input = torch.stack((input1, input2, input3))
             
 
         for item in input:

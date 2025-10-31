@@ -1,5 +1,7 @@
 import torch
+from Data_structure.Gates_data import Gates_data
 from Objects.Ball import Ball
+from Objects.Gate import Gate
 from Objects.Player import Player
 import Constants
 import random
@@ -16,6 +18,24 @@ class Map:
         self.walls = []
         self.score = [0, 0]
         self.kick_flag = False
+
+        self.add_balls()
+        self.add_players()
+        self.add_gates()
+        self.add_walls()
+    
+    def add_gates(self):
+        gates_data = [Gates_data(is_left=True), Gates_data(is_left=False)]
+        for data in gates_data:
+            gate = Gate(data)
+            gate.add_boundaries()
+            self.add_gate(gate)
+
+    def add_walls(self):
+        walls = [Constants.wall1, Constants.wall2, Constants.wall3, Constants.wall4, Constants.wall5, 
+                 Constants.wall6]
+        for wall in walls:
+            self.add_wall(WallCollision(wall.start, wall.end, wall.constant, wall.is_vertical))
 
     def set_field(self, field):
         self.field = field
@@ -65,7 +85,7 @@ class Map:
                 # Пинок мяча
                 if isinstance(ball, Player):
                     for other_ball in self.balls:
-                        if not ball.is_kicking:
+                        if ball.is_kicking:
                             self.kick(ball, other_ball) 
             
             # Коллизия мяча и границы поля
