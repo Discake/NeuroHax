@@ -43,15 +43,6 @@ class Map:
             self.players.append(player1)
             self.balls.append(player1)
 
-            # player2 = Player(
-            #     Constants.players_positions_team2[i],
-            #     Constants.player_radius,
-            #     Constants.player_mass,
-            #     Constants.max_player_speed)
-            # player2.set_color(Constants.player_color)
-            # self.players.append(player2)
-            # self.balls.append(player2)
-
     def set_ball_teams(self, ball_teams):
         self.ball_teams = ball_teams
 
@@ -89,8 +80,8 @@ class Map:
                                 other_ball_pos = other_ball.position
                                 
                                 direction = ball_pos - other_ball_pos
-                                dist = torch.linalg.vector_norm(direction)
-                                if dist < ball.radius + other_ball.radius + Constants.kick_radius:
+                                dist = torch.dot(direction, direction)
+                                if dist < (ball.radius + other_ball.radius + Constants.kick_radius) ** 2:
                                     ball.kick(other_ball, direction)
                                     self.kick_flag = True
 

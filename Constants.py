@@ -117,9 +117,3 @@ wall4 = set_wall(field_margin / 2 + field_size[0], field_margin / 2 + field_size
 
 wall5 = set_wall(field_margin / 2, field_margin / 2, field_size[0], field_size[1], False) #top
 wall6 = set_wall(field_margin / 2, field_margin / 2 + field_size[1], field_size[0], field_size[1], False)#bottom
-
-# wall7 = set_wall(0, 0, window_size[0], 0, False)
-# wall8 = set_wall(0, 0, 0, window_size[1], True)
-
-# wall9 = set_wall(window_size[0], 0, window_size[0], window_size[1], True)
-# wall10 = set_wall(0, window_size[1], window_size[0], window_size[1], False)

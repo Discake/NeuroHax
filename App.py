@@ -27,7 +27,6 @@ device = Constants.device
 class App:
     def __init__(self, play, train, draw = False, logging = True):
         # Initialize Pygame
-        self.train_loader = None
         self.draw = draw
         self.logging = logging
         if draw:
@@ -182,20 +181,18 @@ class App:
         t = Timer(0.5, self.callback)
         t.start()
 
-    def training(self, map, draw = False):
-        checkpoint = torch.load(f'Maksigma_net_ravnykh_new_method.pth')
+    def training(self, save_filename = None, draw_stats = False):
+
         model = Maksigma_net().to(device=device)
-        print(f"Device = {device}")  # Создайте экземпляр модели
-        model.load_state_dict(checkpoint)
-        # # loss = checkpoint['loss']
-        # # r = reinforce(model, lr=3e-2, loss=10)
-        # # r.optim.load_state_dict(checkpoint['optimizer_state_dict'])
-        
-        # # maksigma = Maksigma_net()
-        # r = reinforce(model, lr=3e-4, loss=10)
 
-        # nn = r.train(model, Enviroment(model), episodes=6000000000, batch_episodes=1, gamma=0.995, device="cpu")
-
-        t = Training(Environment(map, model), self.train_loader, draw=draw)
+        if save_filename is not None:
+            checkpoint = torch.load(save_filename)
+            model.load_state_dict(checkpoint)
+            print(f"Model loaded successfully from: {save_filename}")
         
-        return t
+        print(f"Computation on device: {device}")
+        
+
+        t = Training(Environment(self.map, model), draw=draw_stats)
+        
+        return t.train(draw_stats)

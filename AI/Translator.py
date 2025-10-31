@@ -49,28 +49,6 @@ class Translator:
     def translate_output(self, input):
         
         action, logp, _, entropy = self.net.get_action(input)
-        # action, logp, entropy = sample_action_and_stats(self.net.forward(input))
-        # mu = torch.sigmoid(logits) * 2 - 1
-        # sigma = torch.ones_like(mu) * 0.5
-
-        # # Определяем нормальное распределение
-        # dist = torch.distributions.Normal(mu, sigma)
-
-        # # Семплируем действие (используем rsample для дифференцируемого пути)
-        # action = dist.rsample()
-
-        # # Ограничиваем диапазон действий (например, [-1, 1]) через tanh
-        # action = torch.tanh(action)
-
-        # # Вычисляем логарифм вероятности и энтропию
-        # logp = dist.log_prob(action).sum(-1)
-        # entropy = dist.entropy().sum(-1)
-
-        # a = action.tolist()
-        # with torch.no_grad():
-        # self.map.ball_teams[self.index][0].velocity[0] = self.map.ball_teams[0][0].velocity[0] + Constants.speed_increment * action[0]
-        # self.map.ball_teams[self.index][0].velocity[1] = self.map.ball_teams[0][0].velocity[1] + Constants.speed_increment * action[1]
-        # self.map.ball_teams[self.index][0].set_kicking(action[2] > 0)
 
         return action, logp, entropy
         

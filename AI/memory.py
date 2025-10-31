@@ -32,13 +32,3 @@ class Memory:
         del self.old_log_probs[:]
         del self.rewards[:]
         del self.is_terminals[:]
-
-    def to_device(self, device):
-        self.states = [exp.cpu() if hasattr(exp, 'cpu') else exp 
-                      for exp in self.states]
-        self.actions = [exp.cpu() if hasattr(exp, 'cpu') else exp 
-                      for exp in self.actions]
-        self.old_log_probs = [exp.cpu() if hasattr(exp, 'cpu') else exp 
-                      for exp in self.old_log_probs]
-        self.rewards = [exp.cpu() if hasattr(exp, 'cpu') else exp 
-                      for exp in self.rewards]

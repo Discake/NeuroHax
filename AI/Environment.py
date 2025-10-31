@@ -36,7 +36,6 @@ class Environment:
         self.ai_action = Net_action.Net_action(nn, map, 0)
 
         self.count = 0
-        self.r = 5000
 
         player = self.map.ball_teams[0][0]
         ball = self.map.ball_teams[0][1]
@@ -71,7 +70,6 @@ class Environment:
             done = self.count > self.num_steps
             self.count += 1
 
-            # r = 0
             be_strict = True
             r = 0
             if self.map.kick_flag:
@@ -87,7 +85,6 @@ class Environment:
             
             dist = torch.abs(d.norm() - player.radius - ball.radius + 0.00001)
 
-            reward_prev_dist_less = (self.prev_dist - dist) * 1000# * Constants.field_size[0] / (player.radius + ball.radius) / 2
             reward_big_dist = dist
 
             self.k_dist = self.k_dist ** (1 - self.k_dist)
@@ -97,7 +94,7 @@ class Environment:
                 
 
             if self.num_steps - self.count <= -3:
-                print("errrrooooooooorrrr")
+                print("error in env.count")
 
             r = r - 1 * reward_big_dist / Constants.field_size[0] / (self.num_steps - self.count + 3)
             self.prev_dist = dist
@@ -129,12 +126,9 @@ class Environment:
             self.map.ball_teams[0][0].velocity.y = torch.tensor(0.).to(Constants.device)
             self.map.ball_teams[0][1].velocity.x = torch.tensor(0.).to(Constants.device)
             self.map.ball_teams[0][1].velocity.y = torch.tensor(0.).to(Constants.device)
-            # for team in self.map.ball_teams:
-            #     for ball in team:
-            #         print(f"{ball}")
+            
 
             self.ai_action.set_player(self.map.ball_teams[0][0])
-            # self.ai_action.update_translator()
             inp = self.ai_action.translator.translate_input()
 
             return inp

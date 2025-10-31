@@ -4,11 +4,6 @@ import torch
 import Constants
 
 def reflect_ball_from_point(ball_pos, ball_vel, point, radius):
-        # ball_pos, ball_vel, point — np.array([x, y])
-
-        # ball_pos = np.array([ball_pos.x, ball_pos.y])
-        # ball_vel = np.array([ball_vel.x, ball_vel.y])
-        # point = np.array([point[0], point[1]])
 
         direction = ball_pos - point
         dist = torch.norm(direction)

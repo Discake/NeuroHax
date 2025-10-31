@@ -90,9 +90,6 @@ class PPO:
                 loss = actor_loss + 0.5 * critic_loss - entropy_bonus
 
                 self.optimizer.zero_grad(set_to_none=True)
-                # scaler.scale(loss).backward()
-                # scaler.step(self.optimizer)
-                # scaler.update()
 
                 loss.backward()
                 self.optimizer.step()

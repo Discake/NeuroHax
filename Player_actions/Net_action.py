@@ -12,8 +12,6 @@ class Net_action(Player_action):
         self.map = map
         self.hit_flag = False
         self.count = 1
-        self.x_vel_sum = 0
-        self.y_vel_sum = 0
 
     def update_translator(self):
         self.hit_flag = False
