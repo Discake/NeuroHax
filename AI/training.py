@@ -15,7 +15,7 @@ class Training:
         self.env = env
         self.last_rewards = -1000
         self.save = None
-        self.draw = draw
+        self.draw = draw_stats
         self.logging = False
         
 

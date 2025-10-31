@@ -3,8 +3,6 @@ from AI.Maksigma_net import Maksigma_net
 import Constants
 from Objects.Map import Map
 from Objects.Player import Player
-from AI.SingleLayerNet import SingleLayerNet
-from AI.reinforce import sample_action_and_stats
 
 class Translator:
     def __init__(self, map: Map, net : Maksigma_net, index):

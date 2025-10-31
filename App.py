@@ -12,7 +12,6 @@ from AI.SingleLayerNet import SingleLayerNet
 import copy
 from threading import Timer
 from AI.Environment import Environment
-from AI.reinforce import reinforce
 import torch
 from AI.training import Training
 
