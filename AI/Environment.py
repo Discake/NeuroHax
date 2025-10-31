@@ -12,7 +12,7 @@ import copy
 class Environment:
     def __init__(self, map, nn):
         # Initialize Pygame
-        self.num_steps = 1024
+        self.num_steps = 2048
         self.map = Map(Constants.field_size[0], Constants.field_size[1])
 
         self.map.add_players()
@@ -64,11 +64,8 @@ class Environment:
             self.map.add_wall(Wall(wall.start, wall.end, wall.constant, wall.is_vertical))
 
     def step(self, input):
-        # self.ai_action.set_player(self.map.ball_teams[0][0])
-        # self.ai_action.update_translator()
 
-            self.ai_action.act(input)
-        # with torch.no_grad():    
+            self.ai_action.act(input)    
             self.map.move_balls()
 
             done = self.count > self.num_steps
@@ -82,108 +79,29 @@ class Environment:
                 self.map.kick_flag = False
                 be_strict = False
                 # done = True
-            elif self.map.hit_flag:
-                r += 2000 * self.kick_count
-                self.map.hit_flag = False
-                be_strict = False
-                # done = True
-
-            # if self.map.wall_hit:
-            #     r -= 1000
-            #     self.map.wall_hit = False
 
             player = self.map.ball_teams[0][0]
             ball = self.map.ball_teams[0][1]
             d = player.position - ball.position
 
             
-            dist = (d.norm() - player.radius - ball.radius)
-            
-            # r = r - torch.sqrt(player.velocity.x ** 2 + player.velocity.y ** 2) / Constants.max_player_speed
-            # r = r + torch.sqrt(ball.velocity.x ** 2 + ball.velocity.y ** 2) / Constants.max_ball_speed
+            dist = torch.abs(d.norm() - player.radius - ball.radius + 0.00001)
 
             reward_prev_dist_less = (self.prev_dist - dist) * 1000# * Constants.field_size[0] / (player.radius + ball.radius) / 2
             reward_big_dist = dist
-
-
-            # if dist > Constants.field_size[1] / 2:
-            #     r += 10 * reward_prev_dist_less
-            # else:
-            #     r -= 1 * reward_big_dist
 
             self.k_dist = self.k_dist ** (1 - self.k_dist)
 
             if not be_strict:
                  self.k_dist = 0.7
-            
-            # if self.k_dist < 0.9:
-            #     r = r + 1 * reward_prev_dist_less/ Constants.field_size[0] / self.k_dist
-            # else:
-            #     r = r + 1 * reward_prev_dist_less / Constants.field_size[0]
                 
-            # r = r - 1 * reward_big_dist * self.k_dist / Constants.field_size[0]
 
-            r = r + 1 * reward_prev_dist_less / Constants.field_size[0]
-            # r -= 100 * reward_big_dist * self.k / (self.step_num - self.count + 100)
+            if self.num_steps - self.count <= -3:
+                print("errrrooooooooorrrr")
 
-            # be_strict = ball.velocity.length() < 0.5
-            # if be_strict and tick > 0:
-            #     be_strict = False
-            #     tick -= 1
-
-            # if be_strict:
-            # if be_strict:
-            #     r += 0.1 * reward_prev_dist_less# / (Constants.window_size[0] / 2)
-            #     r -= 0.01 * reward_big_dist# / (Constants.window_size[0] / 2)
-                # if self.prev_dist > dist:
-                #     r += 1
-                
-            # if dist < 3 * (player.radius + ball.radius):
-            #     r += 0.3
-            # else:
-            #     r -= 0.3
-
-
-            # r += player.velocity.length() / 2 * Constants.max_player_speed
-
-            # r -= (Constants.max_ball_speed - ball.velocity.length()) / Constants.max_ball_speed
-
+            r = r - 1 * reward_big_dist / Constants.field_size[0] / (self.num_steps - self.count + 3)
             self.prev_dist = dist
-            # if self.count % 100 == 0:
-            # r += 0.1 / dist
-            # if dist < 120:
-            #     r += 0.25
-            #     # r -= 10 / (dist)
-            # if dist > 200:
-            #     r -= 0.5
-
-            # if dist < 300:
-            #     r -= 0.25
-            # else:
-                # r += 1000 / dist
             
-            # if dist < self.prev_dist:
-            #     r += self.r
-            #     self.r += 1000
-
-            # if dist > self.prev_dist:
-            #     self.r = 5000
-            #     r =  0
-            # self.prev_dist = dist  
-
-            # if self.map.score[0] > 0:
-            #     done = True
-            #     r += 10000
-
-            #     self.map.score[0] = 0
-            # if self.map.score[1] > 0:
-            #     done = True
-            #     r += 10000
-            #     self.map.score[1] = 0
-
-            # player = self.map.ball_teams[0][0]
-            # r = player.position.x
-
             ns = self.ai_action.translator.translate_input()
             return ns, r, done
 

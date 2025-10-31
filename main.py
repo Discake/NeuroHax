@@ -5,11 +5,11 @@ import multiprocessing as mp
 if __name__ == '__main__':
     app = App(play=False, train=True, draw=True, logging=True)
 
-    app.train = False
-    app.start_ai_game()
+    # app.train = False
+    # app.start_ai_game()
 
 
-    # mp.set_start_method('spawn', force=True)
+    mp.set_start_method('spawn', force=True)
 
-    # training = app.training(app.map)
-    # training.train(True)
+    training = app.training(app.map)
+    training.train(True)

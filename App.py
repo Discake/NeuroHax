@@ -120,7 +120,7 @@ class App:
                     # if i == 0 and j == 0:
                     #     nn = self.train()
                     nn = Maksigma_net()
-                    nn.load_state_dict(torch.load(f'{nn.name}.pth'))
+                    nn.load_state_dict(torch.load(f'Maksigma_net_ravnykh_new_method.pth'))
                     nn = nn.eval()
                     ai_action = Net_action(nn, self.map, j)
                     actions.append(ai_action)
@@ -183,7 +183,7 @@ class App:
         t.start()
 
     def training(self, map, draw = False):
-        checkpoint = torch.load('Maksigma_net_ravnykh_2.pth')
+        checkpoint = torch.load(f'Maksigma_net_ravnykh_new_method.pth')
         model = Maksigma_net().to(device=device)
         print(f"Device = {device}")  # Создайте экземпляр модели
         model.load_state_dict(checkpoint)

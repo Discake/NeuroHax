@@ -21,7 +21,7 @@ class PPO:
         self.policy_old.load_state_dict(self.policy.state_dict())
         
         # self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=0.5e-3)
-        self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=1e-3)
+        self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=2e-3)
         self.lr_scheduler = torch.optim.lr_scheduler.StepLR(
             self.optimizer, step_size=1000, gamma=0.98)
 
@@ -73,7 +73,7 @@ class PPO:
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
 
         for epoch in range(self.K_epochs):
-            with torch.amp.autocast_mode.autocast(Constants.device.type):
+            # with torch.amp.autocast_mode.autocast(Constants.device.type):
                 new_log_probs, values, entropy = self.policy.evaluate_actions(batch_states, batch_actions)
 
                 ratios = torch.exp(new_log_probs - batch_logps)
@@ -89,15 +89,18 @@ class PPO:
                 entropy_bonus = self.get_entropy_coef(ep) * entropy_loss
                 loss = actor_loss + 0.5 * critic_loss - entropy_bonus
 
-            self.optimizer.zero_grad(set_to_none=True)
-            scaler.scale(loss).backward()
-            scaler.step(self.optimizer)
-            scaler.update()
+                self.optimizer.zero_grad(set_to_none=True)
+                # scaler.scale(loss).backward()
+                # scaler.step(self.optimizer)
+                # scaler.update()
 
-            self.lr_scheduler.step()
-            if logging:
-                print(f"Epoch {epoch}: mean_ratio={mean_ratio:.4f}, "
-                    f"clipped={clipped_fraction:.2%}, new_log_prob = {new_log_probs.mean().item():.4f}")
+                loss.backward()
+                self.optimizer.step()
+
+                self.lr_scheduler.step()
+                if logging:
+                    print(f"Epoch {epoch}: mean_ratio={mean_ratio:.4f}, "
+                        f"clipped={clipped_fraction:.2%}, new_log_prob = {new_log_probs.mean().item():.4f}")
 
         if logging:
             self.plotter.update(ep, (returns - batch_values.detach().squeeze(-1)).mean().detach().item())
@@ -106,9 +109,9 @@ class PPO:
         self.policy_old.to(Constants.device)
 
     def get_entropy_coef(self, episode_num):
-        start_coef = 0.2      # высокий exploration на старте
-        end_coef = 0.001      # низкий бонус после долгого обучения
-        decay_episodes = 10000
+        start_coef = 0.07      # высокий exploration на старте
+        end_coef = 0.07    # низкий бонус после долгого обучения
+        decay_episodes = 100
         
         # Линейная интерполяция
         progress = min(episode_num / decay_episodes, 1.0)

@@ -17,7 +17,7 @@ import torch.multiprocessing as mp
 
 class Training:
     def __init__(self, env : Environment, train_loader, draw = False):
-        self.num_episodes = 100
+        self.num_episodes = 10000
         self.batch_size = 4096 * 5
         self.memory = Memory()
         self.ppo = PPO(env.ai_action.translator.net)
@@ -75,6 +75,8 @@ class Training:
             for shm in collector.shm_objects:
                 shm.close()
                 shm.unlink()
+
+            self.save = torch.save(self.ppo.policy.state_dict(), f"{self.ppo.policy.name}_new_method.pth")
             
             # Слияние results = trajectories
 
