@@ -70,6 +70,7 @@ class Training:
             
             # Обновление PPO
             if experiences:
+                self.ppo.policy.to(Constants.device)
                 self.ppo.update(experiences, ep=episode)
 
             for shm in collector.shm_objects:

@@ -122,6 +122,7 @@ class PPO:
         
         # После K эпох: обновляем старую политику
         self.policy_old.load_state_dict(self.policy.state_dict())
+        self.policy_old.to(Constants.device)
 
     def get_entropy_coef(self, episode_num):
         start_coef = 0.2      # высокий exploration на старте
