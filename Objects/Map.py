@@ -56,19 +56,17 @@ class Map:
                 Constants.max_player_speed)
             player.set_color(Constants.player_color)
             self.players_team1.append(player)
-            self.balls.append(player)
 
     def move_balls(self):
         all_balls = self.balls + self.players_team1 + self.players_team2
-
+        self.kick_flag = False
         # Итерации нужны для обеспечения разрешимости коллизий при высоких скоростях
         for _ in range(Constants.iterations):
             for ball in all_balls:
-                ball.move(Constants.time_increment / Constants.iterations)
-
+                    ball.move(Constants.time_increment / Constants.iterations)
+            
             for i in range(len(all_balls)):
                 ball = all_balls[i]
-                ball.is_collided = False
 
                 # Коллизия шаров друг с другом
                 for j in range(i + 1, len(all_balls)):
@@ -93,7 +91,7 @@ class Map:
                 for wall in self.walls:
                     if wall.detect_collision(ball):
                         wall.resolve_collision(ball)
-                        self.wall_hit = True          
+                        self.wall_hit = True
 
 
     def kick(self, ball, other_ball):
@@ -164,15 +162,12 @@ def clone_and_detach_object(obj):
 
 # Метод клонирования карты
 def clone_and_detach_map(old_map):
-    new_map = Map(old_map.width, old_map.height)
+    new_map = Map()
     new_map.score = list(old_map.score)
-    new_map.save = old_map.save
-    new_map.hit_flag = old_map.hit_flag
     new_map.kick_flag = old_map.kick_flag
-    new_map.wall_hit = old_map.wall_hit
-    new_map.ball_teams = [[clone_and_detach_object(ball) for ball in team] for team in old_map.ball_teams]
+    new_map.players_team1 = [clone_and_detach_object(player) for player in old_map.players_team1]
+    new_map.players_team2 = [clone_and_detach_object(player) for player in old_map.players_team2]
     new_map.balls = [clone_and_detach_object(ball) for ball in old_map.balls]
-    new_map.players = [clone_and_detach_object(player) for player in old_map.players]
     new_map.gates   = [clone_and_detach_object(gate) for gate in old_map.gates]
     new_map.walls   = [clone_and_detach_object(wall) for wall in old_map.walls]
     return new_map

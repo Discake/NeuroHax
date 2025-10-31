@@ -53,13 +53,18 @@ class BallCollision():
         m2 = ball2.mass
 
         # Компоненты вдоль направления столкновения (axis x)
-        u1 = v1_rot[0]
-        u2 = v2_rot[0]
+        delta_m = m1 - m2
+        m_sum = m1 + m2
+        M = delta_m / m_sum
+        mass_mat = torch.tensor([
+            [M, 2 * m2 / m_sum],
+            [2 * m1 / m_sum, -M]
+        ], device=Constants.device)
 
         # Классическая формула обмена импульсом с учетом масс
-        v1_x_new = (u1 * (m1 - m2) + 2 * m2 * u2) / (m1 + m2)
-        v2_x_new = (u2 * (m2 - m1) + 2 * m1 * u1) / (m1 + m2)
-
+        v_new = torch.matmul(mass_mat, torch.tensor([v1_rot[0], v2_rot[0]], device=Constants.device))
+        v1_x_new = v_new[0]
+        v2_x_new = v_new[1]
         # Перпендикулярные компоненты (axis y) не меняются
         v1_y_new = v1_rot[1]
         v2_y_new = v2_rot[1]
@@ -99,8 +104,8 @@ class BallCollision():
         
         if overlap > 0:
             # Нормализованный вектор разделения
-            nx = d[0] * 3 / distance
-            ny = d[1] * 3 / distance
+            nx = d[0] / distance
+            ny = d[1] / distance
             
             # Распределяем смещение пропорционально массам
             # Более тяжелый объект движется меньше
@@ -111,5 +116,5 @@ class BallCollision():
             overlap_vector = torch.tensor([overlap * nx, overlap * ny], device=Constants.device)
             
             # Смещаем каждый шар
-            ball1.position = ball1.position - ratio1 * overlap_vector
-            ball2.position = ball2.position + ratio2 * overlap_vector
+            ball1.position = ball1.position - ratio1 * overlap_vector * 2
+            ball2.position = ball2.position + ratio2 * overlap_vector * 2

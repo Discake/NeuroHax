@@ -69,15 +69,16 @@ class App:
         # Quit Pygame
         pygame.quit()
 
-    def start_ai_game(self):
+    def start_ai_game(self, save_filename = None):
         running = True
 
         actions = []
         
-        if not self.play and not self.train:
+        if not self.train:
             for i in range(Constants.player_number - 1 if self.play else Constants.player_number):
                 nn = Maksigma_net()
-                nn.load_state_dict(torch.load(f'Maksigma_net_ravnykh_new_method.pth'))
+                if(save_filename is not None):
+                    nn.load_state_dict(torch.load(save_filename))
                 nn = nn.eval()
                 ai_action = Net_action(nn, self.map)
                 ai_action.set_player(self.map.players_team1[i])
@@ -86,7 +87,7 @@ class App:
         if self.play:
             keydown_action = Keydown_action()
             actions.append(keydown_action)
-            keydown_action.set_player(self.map.players_team1[0])
+            keydown_action.set_player(self.map.players_team1[1])
 
         if self.train:
             # torch.autograd.set_detect_anomaly(True)
@@ -145,6 +146,6 @@ class App:
         print(f"Computation on device: {device}")
         
 
-        t = Training(Environment(self.map, model), draw=draw_stats)
+        t = Training(Environment(self.map, model), draw_stats=draw_stats)
         
         return t.train(draw_stats)

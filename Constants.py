@@ -7,10 +7,10 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 player_radius = 30  # Radius of the player
 ball_radius = 20  # Radius of the ball
 player_mass = 300.0  # Mass of the player
-ball_mass = 200  # Mass of the ball
-max_player_speed = 1  # Maximum speed of the player
+ball_mass = 250  # Mass of the ball
+max_player_speed = 2.5  # Maximum speed of the player
 max_ball_speed = 15.0  # Maximum speed of the ball
-time_increment = 1  # Time increment for movement
+time_increment = 5  # Time increment for movement
 speed_increment = 0.7 # Speed increment for the player
 
 iterations = 1 * round(time_increment)
@@ -32,7 +32,7 @@ gates_inner_color = (0, 100, 0)
 
 # Amount of players and balls
 # player_number = int(input("Enter the number of players (1 or 2): "))  # Player number
-player_number = 1  # Player number
+player_number = 2  # Player number
 ball_number = 1  # Ball number
 
 # Window size

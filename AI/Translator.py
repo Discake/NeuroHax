@@ -5,30 +5,29 @@ from Objects.Map import Map
 from Objects.Player import Player
 
 class Translator:
-    def __init__(self, map: Map, net : Maksigma_net, index):
+    def __init__(self, map: Map, net : Maksigma_net):
         self.map = map
         self.net = net
         self.input = torch.zeros(Constants.player_number * 4 + Constants.ball_number * 4 + 1)
         self.output = [0, 0, 0]
-        self.index = index
 
     def translate_input(self):
         # ball = self.map.balls[-1]
 
         # self.input = self.input.detach().clone()
-        input1 = [0, 0, 0, 0, 0, 0, 0, 0]
-        input2 = [0, 0, 0, 0, 0, 0, 0, 0]
-        input3 = [0, 0, 0, 0, 0, 0, 0, 0]
+        input1 = torch.zeros(4)
+        input2 = torch.zeros(4)
+        input3 = torch.zeros(4)
         maximum = Constants.field_size[1]
 
         
         for i in range(len(self.map.players_team1)):
-            ball = self.map.players_team1[i]
+            player = self.map.players_team1[i]
             
-            input1[4 * i] = (ball.position[0] - Constants.x_center) / (maximum)
-            input1[4 * i + 1] = (ball.position[1] - Constants.y_center) / (maximum)
-            input1[4 * i + 2] = (ball.velocity[0]) / Constants.max_player_speed / 2
-            input1[4 * i + 3] = (ball.velocity[1]) / Constants.max_player_speed / 2
+            input1[4 * i] = (player.position[0] - Constants.x_center) / (maximum)
+            input1[4 * i + 1] = (player.position[1] - Constants.y_center) / (maximum)
+            input1[4 * i + 2] = (player.velocity[0]) / Constants.max_player_speed / 2
+            input1[4 * i + 3] = (player.velocity[1]) / Constants.max_player_speed / 2
 
         for i in range(len(self.map.players_team2)):
             player = self.map.players_team2[i]
@@ -47,7 +46,7 @@ class Translator:
             input3[4 * i + 3] = (ball.velocity[1]) / Constants.max_ball_speed / 2
                 
 
-        input = torch.stack((input1, input2, input3))
+        input = torch.cat((input1, input2))
             
 
         for item in input:

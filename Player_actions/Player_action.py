@@ -11,6 +11,5 @@ class Player_action:
         vel_y = input[1]
 
         vel_vec = torch.tensor([vel_x, vel_y]).to(Constants.device)
-        vel_vec = vel_vec * Constants.speed_increment / (vel_vec.norm() + 1e-8)
         self.player.velocity += vel_vec
 

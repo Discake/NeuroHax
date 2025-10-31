@@ -1,5 +1,3 @@
-from random import random
-
 import torch
 from Objects.Map import Map
 from Objects.Gate import Gate
@@ -7,38 +5,22 @@ from Data_structure.Gates_data import Gates_data
 from Physics.WallCollision import WallCollision as Wall
 import Constants
 from Player_actions import Net_action
-import copy
 
 class Environment:
     def __init__(self, map, nn):
-        # Initialize Pygame
-        self.num_steps = 2048
-        self.map = Map(Constants.field_size[0], Constants.field_size[1])
+        self.num_steps = 1024
+        self.map = Map()
 
         self.map.add_players()
         self.map.add_balls()
 
-        # teams = [self.map.balls]
-        teams = []
-        
-        self.teams_number = 1 # DO NOT TOUCH IT
-
-        for i in range(self.teams_number):
-            teams.append(copy.deepcopy(self.map.balls))
-
-        self.map.set_ball_teams(teams)
-
-        self.add_gates()
-        self.add_walls()
-
-        self.map.save_state()
         self.map = map
-        self.ai_action = Net_action.Net_action(nn, map, 0)
+        self.ai_action = Net_action.Net_action(nn, map)
 
         self.count = 0
 
-        player = self.map.ball_teams[0][0]
-        ball = self.map.ball_teams[0][1]
+        player = self.map.players_team1[0]
+        ball = self.map.balls[0]
 
         d = player.position - ball.position
         dist = torch.abs(d.norm() - player.radius - ball.radius)
@@ -78,8 +60,8 @@ class Environment:
                 be_strict = False
                 # done = True
 
-            player = self.map.ball_teams[0][0]
-            ball = self.map.ball_teams[0][1]
+            player = self.map.players_team1[0]
+            ball = self.map.balls[0]
             d = player.position - ball.position
 
             
@@ -103,35 +85,24 @@ class Environment:
             return ns, r, done
 
     def reset(self):
-        # with torch.no_grad():
-            self.count = 0
+        self.count = 0
 
-            # if not self.flag:
-            self.map.load()
-            player = self.map.ball_teams[0][0]
-            ball = self.map.ball_teams[0][1]
+        self.map.load_random()
+        player = self.map.players_team1[0]
+        ball = self.map.balls[0]
 
-            d = player.position - ball.position
+        d = player.position - ball.position
 
-            dist = torch.abs(d.norm() - player.radius - ball.radius)
+        dist = torch.abs(d.norm() - player.radius - ball.radius)
 
-            self.prev_dist = dist
+        self.prev_dist = dist
 
-            self.k_dist = 0.7 + 1 / dist
+        self.step_num = dist * 1 * Constants.max_ball_speed / (Constants.speed_increment)            
 
+        self.ai_action.set_player(self.map.players_team1[0])
+        inp = self.ai_action.translator.translate_input()
 
-            self.step_num = dist * 1 * Constants.max_ball_speed / (Constants.speed_increment)
-
-            self.map.ball_teams[0][0].velocity.x = torch.tensor(0.).to(Constants.device)
-            self.map.ball_teams[0][0].velocity.y = torch.tensor(0.).to(Constants.device)
-            self.map.ball_teams[0][1].velocity.x = torch.tensor(0.).to(Constants.device)
-            self.map.ball_teams[0][1].velocity.y = torch.tensor(0.).to(Constants.device)
-            
-
-            self.ai_action.set_player(self.map.ball_teams[0][0])
-            inp = self.ai_action.translator.translate_input()
-
-            return inp
+        return inp
         
                     
                 
