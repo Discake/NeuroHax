@@ -13,7 +13,7 @@ class Gate:
         self.outer_color = Constants.gates_outer_color
         self.position = torch.tensor([gate_data.center_x, gate_data.center_y], device=Constants.device)
         self.add_pos = torch.tensor([gate_data.add_pos[0], gate_data.add_pos[1]], device=Constants.device)
-        self.boundaries = []
+        self.boundaries = list[Wall]()
 
     def set_additional_pos(self, add_pos):
         self.add_pos = torch.tensor([add_pos[0], add_pos[1]], device=Constants.device)        

@@ -21,7 +21,7 @@ class PPO:
         self.policy_old.load_state_dict(self.policy.state_dict())
         
         # self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=0.5e-3)
-        self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=2e-3)
+        self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=0.5e-3)
         self.lr_scheduler = torch.optim.lr_scheduler.StepLR(
             self.optimizer, step_size=1000, gamma=0.98)
 
@@ -56,11 +56,11 @@ class PPO:
     
     def update(self, memory: Memory, ep, logging=True):
         # Перевод наград и terminals в тензоры
-        batch_rewards = torch.tensor(memory.rewards, device=Constants.device)
-        batch_states = torch.tensor(memory.states, device=Constants.device)
-        batch_actions = torch.tensor(memory.actions, device=Constants.device)
-        batch_logps = torch.tensor(memory.old_log_probs, device=Constants.device)
-        batch_terminals = torch.tensor(memory.is_terminals, dtype=torch.float32, device=Constants.device)
+        batch_rewards = memory.rewards
+        batch_states = memory.states
+        batch_actions = memory.actions
+        batch_logps = memory.old_log_probs
+        batch_terminals = memory.is_terminals
 
         # Получаем current value оценку с помощью критика
         with torch.no_grad():

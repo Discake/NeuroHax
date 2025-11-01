@@ -1,23 +1,28 @@
 import torch
 
+# AI
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+state_size = 9 # Input of the model
+action_size = 3 # Action output of the model
+
+training_time_coefficient = 2
 
 # Physics
 
 player_radius = 30  # Radius of the player
 ball_radius = 20  # Radius of the ball
-player_mass = 300.0  # Mass of the player
-ball_mass = 250  # Mass of the ball
+player_mass = 0.3  # Mass of the player
+ball_mass = 0.15  # Mass of the ball
 max_player_speed = 2.5  # Maximum speed of the player
-max_ball_speed = 15.0  # Maximum speed of the ball
-time_increment = 5  # Time increment for movement
-speed_increment = 0.7 # Speed increment for the player
+max_ball_speed = 5.0  # Maximum speed of the ball
+time_increment = 1  # Time increment for movement
+acceleration = 0.3 # Speed increment for the player
 
 iterations = 1 * round(time_increment)
 
 friction = 10  # Friction coefficient
 
-kicking_power = 20  # Power of the kick
+kicking_power = 0.1  # Power of the kick
 kick_radius = 15  # Radius of the kick
 
 # Color

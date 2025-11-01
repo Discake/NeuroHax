@@ -1,6 +1,4 @@
-import pygame
 from AI.Maksigma_net import Maksigma_net
-from Draw.Drawing import Drawing
 from Objects.Map import Map
 from Objects.Gate import Gate
 from Data_structure.Gates_data import Gates_data
@@ -8,8 +6,8 @@ from Physics.WallCollision import WallCollision as Wall
 import Constants
 from Player_actions.Keydown_action import Keydown_action
 from Player_actions.Net_action import Net_action
-from AI.SingleLayerNet import SingleLayerNet
-import copy
+from Draw.Drawing import Drawing
+import pygame
 from threading import Timer
 from AI.Environment import Environment
 import torch
@@ -24,20 +22,18 @@ has = torch.has_mkl
 device = Constants.device
 
 class App:
-    def __init__(self, play, train, draw = False, logging = True):
+    def __init__(self, play, draw_game = False, drawStats = False, logging = True):
         # Initialize Pygame
-        self.draw = draw
+        self.draw_game = draw_game
         self.logging = logging
-        if draw:
+        self.map = Map()        
+        if draw_game:
             pygame.init()
+            pygame.display.set_caption("NeuroHax")
+            self.drawing = Drawing(self.map)
 
         self.play = play
-        self.train = train
 
-        self.map = Map()
-        self.drawing = Drawing(self.map)
-
-        pygame.display.set_caption("NeuroHax")
 
     def start_single_game(self):
         
@@ -74,31 +70,22 @@ class App:
 
         actions = []
         
-        if not self.train:
-            for i in range(Constants.player_number - 1 if self.play else Constants.player_number):
-                nn = Maksigma_net()
-                if(save_filename is not None):
-                    nn.load_state_dict(torch.load(save_filename))
-                nn = nn.eval()
-                ai_action = Net_action(nn, self.map)
-                ai_action.set_player(self.map.players_team1[i])
-                actions.append(ai_action)
+        for i in range(Constants.player_number - 1 if self.play else Constants.player_number):
+            nn = Maksigma_net()
+            if(save_filename is not None):
+                nn.load_state_dict(torch.load(save_filename))
+            nn = nn.eval()
+            ai_action = Net_action(nn, self.map)
+            ai_action.set_player(self.map.players_team1[i])
+            actions.append(ai_action)
             
-        if self.play:
+            
+        else:
             keydown_action = Keydown_action()
             actions.append(keydown_action)
-            keydown_action.set_player(self.map.players_team1[1])
+            keydown_action.set_player(self.map.players_team1[1])  
 
-        if self.train:
-            # torch.autograd.set_detect_anomaly(True)
-            nn, save = self.training(self.map, draw=self.draw)
-
-            torch.save({'model_state_dict': save}, f'{nn.name}.pth')
-
-            ai_action = Net_action(nn, self.map, 0)
-            actions.append(ai_action)  
-
-        if self.draw:
+        if self.draw_game:
             # Game loop
             while running:
                 pygame.time.delay(7)  # Pause for 5 milliseconds
@@ -134,18 +121,18 @@ class App:
         t = Timer(0.5, self.callback)
         t.start()
 
-    def training(self, save_filename = None, draw_stats = False):
+    def training(self, max_steps, load_filename = None, save_filename = None, draw_stats = False):
 
         model = Maksigma_net().to(device=device)
 
-        if save_filename is not None:
-            checkpoint = torch.load(save_filename)
+        if load_filename is not None:
+            checkpoint = torch.load(load_filename)
             model.load_state_dict(checkpoint)
-            print(f"Model loaded successfully from: {save_filename}")
+            print(f"Model loaded successfully from: {load_filename}")
         
         print(f"Computation on device: {device}")
         
 
-        t = Training(Environment(self.map, model), draw_stats=draw_stats)
+        t = Training(Environment(model), draw_stats=draw_stats)
         
-        return t.train(draw_stats)
+        return t.train(draw_stats=draw_stats, max_steps_per_worker=max_steps, save_filename=save_filename)

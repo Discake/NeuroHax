@@ -15,9 +15,9 @@ class Player(Ball):
         else:
             self.set_color(Constants.player_color)
     
-    def kick(self, ball, direction):
+    def kick(self, ball : Ball, direction):
         if self.is_kicking:
-            ball.velocity += direction * (-Constants.kicking_power / ball.mass)
+            ball.velocity = direction * (-Constants.kicking_power)
             self.set_color(Constants.player_color)
             self.set_kicking(False)
 

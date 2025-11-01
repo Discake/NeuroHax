@@ -4,10 +4,11 @@ import Constants
 from math import sqrt
 
 class Movable(BallCollision):
-    def __init__(self, position, velocity, max_velocity):
+    def __init__(self, position, velocity, acceleration, max_velocity):
         super().__init__(self)
         self.position = position
         self.velocity = velocity
+        self.acceleration=acceleration
         self.max_velocity = max_velocity
         self.is_collided = False
         self.drawing = None
@@ -20,26 +21,27 @@ class Movable(BallCollision):
 
     def move(self, time_increment = Constants.time_increment):
         """Move the object based on its velocity and acceleration."""
-        self.validate_velocity()
         self.resolve_position(time_increment)
+        self.validate_velocity()
         self.apply_air_resistance(time_increment)
             
     def resolve_position(self, time):
-        self.position = self.position + self.velocity * time
+        self.position = self.position + self.velocity * time + self.acceleration * time ** 2 / 2
+        self.velocity = self.velocity + self.acceleration * time
 
-    def apply_air_resistance(self, dt = Constants.time_increment):
+    def apply_air_resistance(self, time):
         
         # Вычисляем текущую скорость
         speed = self.velocity.norm()
         
         if speed > 0:
             # Формула силы сопротивления:
-            drag_force = Constants.friction * (0.0001 * speed + 0.0001 + 0.01 / speed)
+            drag_force = Constants.friction * (0.0001 * speed + 0.001)
             
             # Применяем силу
             acceleration = -self.velocity * drag_force
             
-            self.velocity = self.velocity + acceleration * dt
+            self.velocity += acceleration * time
             
     def set_drawing(self, drawing):
         self.drawing = drawing

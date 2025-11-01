@@ -11,5 +11,5 @@ class Player_action:
         vel_y = input[1]
 
         vel_vec = torch.tensor([vel_x, vel_y]).to(Constants.device)
-        self.player.velocity += vel_vec
+        self.player.acceleration = Constants.acceleration * vel_vec
 

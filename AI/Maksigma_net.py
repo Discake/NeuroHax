@@ -4,7 +4,7 @@ import torch.nn as nn
 import Constants
 
 class Maksigma_net(nn.Module):
-    def __init__(self, state_dim=8, hidden_dim=64):
+    def __init__(self, state_dim=Constants.state_size, hidden_dim=64):
         self.name = "Maksigma_net_ravnykh"
         super().__init__()
         # Shared layers (feature extractor)

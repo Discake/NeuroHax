@@ -1,4 +1,3 @@
-import pygame
 import torch
 import Constants
 from Physics.Utils import reflect_ball_from_point
@@ -83,18 +82,3 @@ class WallCollision():
     
     def update(self, screen):
         self.screen = screen
-
-    def draw(self):
-        if self.is_vertical:
-            x1 = x2 = self.constant
-            y1 = self.start
-            y2 = self.end
-        else:
-            y1 = y2 = self.constant
-            x1 = self.start
-            x2 = self.end
-        # Using draw.rect module of
-        # pygame to draw the line
-        pygame.draw.line(self.screen, (0, 0, 0), 
-                        [x1, y1], 
-                        [x2, y2], 5)

@@ -10,19 +10,24 @@ from Physics.WallCollision import WallCollision
 
 class Map:
     def __init__(self):
-        self.balls = []
+        self.balls = list[Ball]()
 
-        self.players_team1 = []
-        self.players_team2 = []
-        self.gates = []
-        self.walls = []
+        self.players_team1 = list[Player]()
+        self.players_team2 = list[Player]()
+        self.gates = list[Gate]()
+        self.walls = list[WallCollision]()
+
         self.score = [0, 0]
         self.kick_flag = False
+        self.time_increment = Constants.time_increment
 
         self.add_balls()
         self.add_players()
         self.add_gates()
         self.add_walls()
+
+        self.all_balls = list[Ball]()
+        self.all_balls = self.balls + self.players_team1 + self.players_team2
     
     def add_gates(self):
         gates_data = [Gates_data(is_left=True), Gates_data(is_left=False)]
@@ -58,19 +63,19 @@ class Map:
             self.players_team1.append(player)
 
     def move_balls(self):
-        all_balls = self.balls + self.players_team1 + self.players_team2
+        
         self.kick_flag = False
         # Итерации нужны для обеспечения разрешимости коллизий при высоких скоростях
         for _ in range(Constants.iterations):
-            for ball in all_balls:
-                    ball.move(Constants.time_increment / Constants.iterations)
+            for ball in self.all_balls:
+                    ball.move(self.time_increment / Constants.iterations)
             
-            for i in range(len(all_balls)):
-                ball = all_balls[i]
+            for i in range(len(self.all_balls)):
+                ball = self.all_balls[i]
 
                 # Коллизия шаров друг с другом
-                for j in range(i + 1, len(all_balls)):
-                    other_ball = all_balls[j]
+                for j in range(i + 1, len(self.all_balls)):
+                    other_ball = self.all_balls[j]
                     if ball.detect_collision(other_ball):
                         ball.resolve_collision(other_ball)
 
@@ -94,7 +99,7 @@ class Map:
                         self.wall_hit = True
 
 
-    def kick(self, ball, other_ball):
+    def kick(self, ball : Player, other_ball : Ball):
         ball_pos = ball.position
         other_ball_pos = other_ball.position
                                 
@@ -108,6 +113,7 @@ class Map:
 
         self.kick_flag = False
         self.hit_flag = False
+        self.time_increment = random.random() * Constants.training_time_coefficient * Constants.time_increment + 1
         
         is_right = random.randint(0, 1)
         y_pos = random.randint(0, Constants.field_size[1] - self.players_team1[0].radius)

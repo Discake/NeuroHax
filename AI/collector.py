@@ -41,7 +41,7 @@ class SharedMemoryExperienceCollector:
         
         return self.shm_names, self.shapes
     
-    def worker_shared_memory(self, step_size, env_map : Map, state_dict, shm_name, process_id):
+    def worker_shared_memory(self, step_size, state_dict, shm_name, process_id):
         """Worker: собирает опыт и пишет в shared memory"""
         try:
             # Загрузка модели (на CPU сначала)
@@ -64,7 +64,7 @@ class SharedMemoryExperienceCollector:
             # Сбор опыта
             experiences = []
             step = 0
-            env = Environment(env_map, local_policy)
+            env = Environment(local_policy)
             
             done = False
             state = env.reset()
@@ -115,7 +115,7 @@ class SharedMemoryExperienceCollector:
             print(f"Worker {process_id} error: {e}")
             return None
     
-    def collect_experience_shared(self, state_dict, env_maps, state_size, action_size):
+    def collect_experience_shared(self, state_dict, state_size, action_size):
         """Основная функция: запуск worker'ов и сбор результатов"""
         if __name__ == '__main__':
             mp.set_start_method('spawn')
@@ -127,7 +127,7 @@ class SharedMemoryExperienceCollector:
         
         # Аргументы для worker'ов
         args = [
-            (self.step_size, env_maps[i], state_dict, shm_names[i], i) 
+            (self.step_size, state_dict, shm_names[i], i) 
             for i in range(self.num_workers)
         ]
         

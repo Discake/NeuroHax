@@ -5,7 +5,8 @@ import Constants
 class Ball (Movable):
     def __init__(self, position, radius, mass, max_velocity):
         init_velocity = torch.tensor([0., 0.]).to(Constants.device)
-        super().__init__(position, velocity=init_velocity, max_velocity=max_velocity)
+        init_acceleration = torch.tensor([0., 0.]).to(Constants.device)
+        super().__init__(position, velocity=init_velocity, acceleration=init_acceleration, max_velocity=max_velocity)
         self.radius = radius
         self.mass = mass
         self.color = (255, 0, 0)  # Default color red
