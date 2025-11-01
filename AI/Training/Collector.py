@@ -4,11 +4,9 @@ from multiprocessing import shared_memory
 import torch
 
 from AI.Maksigma_net import Maksigma_net
-from AI.Translator import Translator
-from AI.Environment import Environment
-from AI.memory import Memory
+from AI.Training.Environment import Environment
+from AI.Training.Memory import Memory
 import Constants
-from Objects.Map import Map
 
 class SharedMemoryExperienceCollector:
     def __init__(self, num_workers=20, max_steps_per_worker=1000):
@@ -31,7 +29,7 @@ class SharedMemoryExperienceCollector:
 
             total_size = self.max_steps_per_worker * step_size
             
-            shm_name = f"ppo_experience_kaggle_{i}"
+            shm_name = f"ppo_experience_{i}"
             shm = shared_memory.SharedMemory(create=True, size=total_size, name=shm_name)
             self.shm_objects.append(shm)  # Сохраняем, чтобы не удалил сборщик мусора
             self.shm_names.append(shm_name)
@@ -119,8 +117,6 @@ class SharedMemoryExperienceCollector:
         """Основная функция: запуск worker'ов и сбор результатов"""
         if __name__ == '__main__':
             mp.set_start_method('spawn')
-
-        memories = []
         
         # Создание shared memory
         shm_names, shapes = self.create_shared_memory_blocks(state_size, action_size)

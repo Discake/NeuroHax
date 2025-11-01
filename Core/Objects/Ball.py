@@ -1,5 +1,5 @@
 import torch
-from Physics.Movable import Movable
+from Core.Physics.Movable import Movable
 import Constants
 
 class Ball (Movable):

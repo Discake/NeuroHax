@@ -1,7 +1,7 @@
 import torch
 from AI.Maksigma_net import Maksigma_net
 import Constants
-from Objects.Map import Map
+from Core.Objects.Map import Map
 
 class Translator:
     def __init__(self, map: Map, net : Maksigma_net):
@@ -53,16 +53,3 @@ class Translator:
                 print("Error in input")
 
         return input
-
-
-    def translate_output(self, input):
-        
-        action, logp, _, entropy = self.net.get_action(input)
-
-        return action, logp, entropy
-        
-
-        
-            
-                
-

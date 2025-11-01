@@ -1,20 +1,18 @@
 import torch
-from Objects.Map import Map
-from Objects.Gate import Gate
-from Data_structure.Gates_data import Gates_data
-from Physics.WallCollision import WallCollision as Wall
+from Core.Objects.Map import Map
 import Constants
+from AI.Translator import Translator
 from Player_actions import Net_action
 
 class Environment:
     def __init__(self, nn, num_steps = 1024):
-        self.num_steps = 1024
+        self.num_steps = num_steps
         self.map = Map()
-
-        self.ai_action = Net_action.Net_action(nn, self.map)
+        self.net = nn
+        self.translator = Translator(self.map, nn)
 
         self.count = 0
-
+        self.net_action = Net_action(self.map, nn)
         player = self.map.players_team1[0]
         ball = self.map.balls[0]
 
@@ -26,7 +24,7 @@ class Environment:
 
     def step(self, input):
 
-            self.ai_action.act(input)    
+            self.net_action.act(input)    
             self.map.move_balls()
 
             done = self.count > self.num_steps
@@ -59,7 +57,7 @@ class Environment:
             r = r - 1 * reward_big_dist / Constants.field_size[0] / (self.num_steps - self.count + 3)
             self.prev_dist = dist
             
-            ns = self.ai_action.translator.translate_input()
+            ns = self.translator.translate_input()
             return ns, r, done
 
     def reset(self):
@@ -75,8 +73,8 @@ class Environment:
 
         self.prev_dist = dist            
 
-        self.ai_action.set_player(self.map.players_team1[0])
-        inp = self.ai_action.translator.translate_input()
+        self.net_action.set_player(self.map.players_team1[0])
+        inp = self.translator.translate_input()
 
         return inp
         

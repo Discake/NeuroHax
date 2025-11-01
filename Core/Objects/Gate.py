@@ -1,5 +1,5 @@
 import torch
-from Physics.WallCollision import WallCollision as Wall
+from Core.Physics.WallCollision import WallCollision as Wall
 import Constants
 
 class Gate:

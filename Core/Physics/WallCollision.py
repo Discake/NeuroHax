@@ -1,6 +1,6 @@
 import torch
 import Constants
-from Physics.Utils import reflect_ball_from_point
+from Core.Physics.Utils import reflect_ball_from_point
 
 class WallCollision():
     

@@ -1,17 +1,17 @@
 import torch
 
-from AI.collector import SharedMemoryExperienceCollector
-from AI.memory import Memory
-from AI.ppo import PPO
-from AI.Environment import Environment
+from AI.Training.Collector import SharedMemoryExperienceCollector
+from AI.Training.Memory import Memory
+from AI.Training.PPO import PPO
+from AI.Training.Environment import Environment
 import Constants
 
-class Training:
+class Training_process:
     def __init__(self, env : Environment, draw_stats = False, num_episodes = 10000):
         self.num_episodes = num_episodes
         self.batch_size = 4096 * 5
         self.memory = Memory()
-        self.ppo = PPO(env.ai_action.translator.net)
+        self.ppo = PPO(env.net)
         self.env = env
         self.save = None
         self.draw_stats = draw_stats

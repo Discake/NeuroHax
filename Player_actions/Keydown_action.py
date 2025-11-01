@@ -1,4 +1,3 @@
-import Constants
 from Player_actions.Player_action import Player_action
 import pygame
 
@@ -28,9 +27,7 @@ class Keydown_action(Player_action):
                 break
 
     def act(self):
-        input = [float(self.pressed_keys[1]) - float(self.pressed_keys[0]), float(self.pressed_keys[3]) - float(self.pressed_keys[2])]
+        input = [float(self.pressed_keys[1]) - float(self.pressed_keys[0]),\
+                  float(self.pressed_keys[3]) - float(self.pressed_keys[2]),\
+                    int(self.pressed_keys[4])]
         super().act(input)
-        if self.pressed_keys[4]:
-            self.player.set_kicking(True)
-        else:
-            self.player.set_kicking(False)

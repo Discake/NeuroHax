@@ -1,10 +1,9 @@
 import torch
-from Physics.BallCollision import BallCollision
+from Core.Physics.BallCollision import BallCollision
 import Constants
-from math import sqrt
 
 class Movable(BallCollision):
-    def __init__(self, position, velocity, acceleration, max_velocity):
+    def __init__(self, position : torch.Tensor, velocity : torch.Tensor, acceleration : torch.Tensor, max_velocity):
         super().__init__(self)
         self.position = position
         self.velocity = velocity
@@ -17,7 +16,7 @@ class Movable(BallCollision):
         """Validate that the velocity does not exceed the maximum allowed speed."""
         vel_norm2 = torch.dot(self.velocity, self.velocity)
         if( vel_norm2 > self.max_velocity ** 2):
-            self.velocity = self.velocity * (self.max_velocity / sqrt(vel_norm2))
+            self.velocity = self.velocity * (self.max_velocity / torch.sqrt(vel_norm2))
 
     def move(self, time_increment = Constants.time_increment):
         """Move the object based on its velocity and acceleration."""

@@ -2,8 +2,8 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from AI.Maksigma_net import Maksigma_net
-from AI.Reward_plotter import Reward_plotter
-from AI.memory import Memory
+from Draw.Reward_plotter import Reward_plotter
+from AI.Training.Memory import Memory
 import Constants
 
 scaler = torch.amp.grad_scaler.GradScaler()

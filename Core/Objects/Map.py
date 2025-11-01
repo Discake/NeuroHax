@@ -1,12 +1,12 @@
 import torch
-from Data_structure.Gates_data import Gates_data
-from Objects.Ball import Ball
-from Objects.Gate import Gate
-from Objects.Player import Player
+from Core.Data_structure.Gates_data import Gates_data
+from Core.Objects.Ball import Ball
+from Core.Objects.Gate import Gate
+from Core.Objects.Player import Player
 import Constants
 import random
 
-from Physics.WallCollision import WallCollision
+from Core.Physics.WallCollision import WallCollision
 
 class Map:
     def __init__(self):

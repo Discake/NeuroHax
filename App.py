@@ -1,17 +1,14 @@
 from AI.Maksigma_net import Maksigma_net
-from Objects.Map import Map
-from Objects.Gate import Gate
-from Data_structure.Gates_data import Gates_data
-from Physics.WallCollision import WallCollision as Wall
+from Core.Objects.Map import Map
 import Constants
 from Player_actions.Keydown_action import Keydown_action
 from Player_actions.Net_action import Net_action
 from Draw.Drawing import Drawing
 import pygame
 from threading import Timer
-from AI.Environment import Environment
+from AI.Training.Environment import Environment
 import torch
-from AI.training import Training
+from AI.Training.Training_process import Training_process
 
 torch.backends.cudnn.benchmark = True
 torch.backends.cudnn.enabled = True
@@ -68,14 +65,14 @@ class App:
     def start_ai_game(self, load_filename = None):
         running = True
 
-        actions = []
+        actions = list[Keydown_action|Net_action]()
         
         for i in range(Constants.player_number - 1 if self.play else Constants.player_number):
             nn = Maksigma_net()
             if(load_filename is not None):
                 nn.load_state_dict(torch.load(load_filename))
             nn = nn.eval()
-            ai_action = Net_action(nn, self.map)
+            ai_action = Net_action(self.map, nn)
             ai_action.set_player(self.map.players_team1[i])
             actions.append(ai_action)
             
@@ -98,14 +95,7 @@ class App:
                             action.set_event(event)
 
                 for action in actions:
-                    if isinstance(action, Net_action):
-                        inp, _, _ = action.translator.translate_output(action.translator.translate_input())
-                        action.act(inp)
-                    else:
-                        action.act()
-
-                    
-
+                    action.act()
 
                 self.drawing.draw()
                 self.map.move_balls()  # Move balls and resolve collisions               
@@ -133,6 +123,6 @@ class App:
         print(f"Computation on device: {device}")
         
 
-        t = Training(Environment(model), draw_stats=draw_stats)
+        t = Training_process(Environment(model), draw_stats=draw_stats)
         
         return t.train(draw_stats=draw_stats, max_steps_per_worker=max_steps, save_filename=save_filename)

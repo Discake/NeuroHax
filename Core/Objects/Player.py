@@ -1,5 +1,5 @@
 import torch
-from Objects.Ball import Ball
+from Core.Objects.Ball import Ball
 import Constants
 
 class Player(Ball):
