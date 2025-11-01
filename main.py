@@ -12,7 +12,7 @@ if __name__ == '__main__':
                       save_filename="Checkpoints/test.pth")
 
     def ai():
-        app = App(play=True, draw_game=True, logging=True)
+        app = App(play=False, draw_game=True, logging=True)
         app.start_ai_game("Checkpoints/test.pth")
 
 

@@ -37,7 +37,7 @@ gates_inner_color = (0, 100, 0)
 
 # Amount of players and balls
 # player_number = int(input("Enter the number of players (1 or 2): "))  # Player number
-player_number = 2  # Player number
+player_number = 1  # Player number
 ball_number = 1  # Ball number
 
 # Window size
