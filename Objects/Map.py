@@ -113,7 +113,7 @@ class Map:
 
         self.kick_flag = False
         self.hit_flag = False
-        self.time_increment = random.random() * Constants.training_time_coefficient * Constants.time_increment + 1
+        self.time_increment = (random.random() - 0.5) * Constants.time_increment + Constants.time_increment 
         
         is_right = random.randint(0, 1)
         y_pos = random.randint(0, Constants.field_size[1] - self.players_team1[0].radius)

@@ -36,10 +36,10 @@ class Movable(BallCollision):
         
         if speed > 0:
             # Формула силы сопротивления:
-            drag_force = Constants.friction * (0.0001 * speed + 0.001)
+            drag_force = Constants.friction * (0.0001 * speed + 0.001 + 0.0001)
             
             # Применяем силу
-            acceleration = -self.velocity * drag_force
+            acceleration = -self.velocity * drag_force * self.mass
             
             self.velocity += acceleration * time
             

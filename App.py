@@ -65,22 +65,22 @@ class App:
         # Quit Pygame
         pygame.quit()
 
-    def start_ai_game(self, save_filename = None):
+    def start_ai_game(self, load_filename = None):
         running = True
 
         actions = []
         
         for i in range(Constants.player_number - 1 if self.play else Constants.player_number):
             nn = Maksigma_net()
-            if(save_filename is not None):
-                nn.load_state_dict(torch.load(save_filename))
+            if(load_filename is not None):
+                nn.load_state_dict(torch.load(load_filename))
             nn = nn.eval()
             ai_action = Net_action(nn, self.map)
             ai_action.set_player(self.map.players_team1[i])
             actions.append(ai_action)
             
             
-        else:
+        if self.play:
             keydown_action = Keydown_action()
             actions.append(keydown_action)
             keydown_action.set_player(self.map.players_team1[1])  

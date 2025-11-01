@@ -12,17 +12,17 @@ training_time_coefficient = 2
 player_radius = 30  # Radius of the player
 ball_radius = 20  # Radius of the ball
 player_mass = 0.3  # Mass of the player
-ball_mass = 0.15  # Mass of the ball
-max_player_speed = 2.5  # Maximum speed of the player
-max_ball_speed = 5.0  # Maximum speed of the ball
+ball_mass = 0.2  # Mass of the ball
+max_player_speed = 2  # Maximum speed of the player
+max_ball_speed = 10.0  # Maximum speed of the ball
 time_increment = 1  # Time increment for movement
-acceleration = 0.3 # Speed increment for the player
+acceleration = 0.25 # Speed increment for the player
 
 iterations = 1 * round(time_increment)
 
-friction = 10  # Friction coefficient
+friction = 100  # Friction coefficient
 
-kicking_power = 0.1  # Power of the kick
+kicking_power = 0.2  # Power of the kick
 kick_radius = 15  # Radius of the kick
 
 # Color
