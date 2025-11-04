@@ -25,7 +25,7 @@ class Movable(BallCollision):
         self.apply_air_resistance(time_increment)
             
     def resolve_position(self, time):
-        self.position = self.position + self.velocity * time + self.acceleration * time ** 2 / 2
+        self.position = self.position + self.velocity * time
         self.velocity = self.velocity + self.acceleration * time
 
     def apply_air_resistance(self, time):
@@ -35,10 +35,12 @@ class Movable(BallCollision):
         
         if speed > 0:
             # Формула силы сопротивления:
-            drag_force = Constants.friction * (0.0001 * speed + 0.001 + 0.0001)
+            # drag_force = Constants.friction * (0.0001 * speed + 0.001 + 0.0001)
             
-            # Применяем силу
-            acceleration = -self.velocity * drag_force * self.mass
+            # # Применяем силу
+            # acceleration = -self.velocity * drag_force * self.mass
+
+            acceleration = -self.velocity * Constants.friction
             
             self.velocity += acceleration * time
             

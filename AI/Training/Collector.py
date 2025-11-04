@@ -24,13 +24,17 @@ class SharedMemoryExperienceCollector:
             # размер одной ячейки сохранения в байтах
             step_size = state_size * 4 + action_size * 4 + 1 * 4 + 1 * 4 + 1 * 4 # bytes
 
+            step_size *= 2 # Из-за двух нейросетей
+
             # размер одной ячейки сохранения в абсолютных единицах
             self.step_size = state_size + action_size + 1 + 1 + 1 # 3 единицы - награда, логарифм, шаг завершения
 
-            total_size = self.max_steps_per_worker * step_size
+            # self.step_size *= 2 # Из-за двух нейросетей
+
+            self.total_size = self.max_steps_per_worker * step_size
             
             shm_name = f"ppo_experience_{i}"
-            shm = shared_memory.SharedMemory(create=True, size=total_size, name=shm_name)
+            shm = shared_memory.SharedMemory(create=True, size=self.total_size, name=shm_name)
             self.shm_objects.append(shm)  # Сохраняем, чтобы не удалил сборщик мусора
             self.shm_names.append(shm_name)
             
@@ -43,11 +47,14 @@ class SharedMemoryExperienceCollector:
         """Worker: собирает опыт и пишет в shared memory"""
         try:
             # Загрузка модели (на CPU сначала)
-            local_policy = Maksigma_net()  # Ваш класс политики
-            local_policy.load_state_dict(state_dict)
+            local_policy1 = Maksigma_net()  # Ваш класс политики
+            local_policy1.load_state_dict(state_dict)
+            local_policy2 = Maksigma_net()  # Ваш класс политики
+            local_policy2.load_state_dict(state_dict)
             
             if torch.cuda.is_available():
-                local_policy = local_policy.to(f'cuda:{process_id % torch.cuda.device_count()}')
+                local_policy1 = local_policy1.to(f'cuda:{process_id % torch.cuda.device_count()}')
+                local_policy2 = local_policy2.to(f'cuda:{process_id % torch.cuda.device_count()}')
             
             # Инициализация shared memory
             shm = self.shm_objects[process_id]
@@ -60,53 +67,57 @@ class SharedMemoryExperienceCollector:
             experience_buffer = np.ndarray((num_steps, step_size), dtype=np.float32, buffer=shm.buf)
             
             # Сбор опыта
-            experiences = []
             step = 0
-            env = Environment(local_policy)
+            env = Environment(local_policy1, local_policy2)
             
             done = False
-            state = env.reset()
+            s1, s2 = env.reset()
             while step < self.max_steps_per_worker and not done:  # Ваш цикл игры                
                 if torch.cuda.is_available():
-                    state = state.to(Constants.device)
+                    s1 = s1.to(Constants.device)
+                    s2 = s2.to(Constants.device)
                 
-                action, log_prob = local_policy.select_action(state)
-                next_state, reward, done = env.step(action)
+                action1, log_prob1 = local_policy1.select_action(s1)
+                action2, log_prob2 = local_policy2.select_action(s2)
+                (ns1, ns2), (r1, r2), done = env.step(action1, action2)
                 
-                test1 = state.detach().flatten().cpu().numpy()
-
-
-                test2 = action.detach().flatten().cpu().numpy()
-                test3 = np.array([reward.flatten().cpu().detach().numpy().item()])
-                test4 = np.array([log_prob.flatten().cpu().detach().numpy().item()])
+                test1 = s1.detach().flatten().numpy()
+                test2 = action1.detach().flatten().numpy()
+                test3 = np.array([r1.flatten().detach().numpy().item()])
+                test4 = np.array([log_prob1.flatten().detach().numpy().item()])
                 test5 = np.array([1.0 if done else 0.0])
                 # Сохранить опыт (flattened)
-                experience_line = np.concatenate([
+                experience_line1 = np.concatenate([
                     test1,  # 8 floats
                     test2,  # 3 floats
                     test3,  # 1 float
                     test4,  # 1 floats
                     test5   # 1 float
                 ])
+                test1 = s2.detach().flatten().numpy()
+                test2 = action2.detach().flatten().numpy()
+                test3 = np.array([r2.flatten().detach().numpy().item()])
+                test4 = np.array([log_prob2.flatten().detach().numpy().item()])
+                test5 = np.array([1.0 if done else 0.0])
+                # Сохранить опыт (flattened)
+                experience_line2 = np.concatenate([
+                    test1,
+                    test2,
+                    test3,
+                    test4,
+                    test5
+                ])
                 
 
                 if step % 100 == 0:
                     print(f"Записано шагов: {step}")
-
-                # Padding если нужно
-                if len(experience_line) < step_size:
-                    experience_line = np.pad(experience_line, (0, step_size - len(experience_line)))
                 
-                experience_buffer[step] = experience_line
-                step += 1
+                experience_buffer[step] = experience_line1
+                experience_buffer[step + 1] = experience_line2
+                step += 2
 
-                state = next_state
-
-            # Заполнить оставшиеся строки нулями
-            if step < num_steps:
-                experience_buffer[step:] = 0
+                s1, s2 = ns1, ns2
                 
-            # shm.close()
             return process_id  # Успешное завершение
             
         except Exception as e:
@@ -132,7 +143,7 @@ class SharedMemoryExperienceCollector:
             pool.starmap(self.worker_shared_memory, args)
         
         # Сбор данных из shared memory
-        all_exp_states, all_exp_actions, all_exp_log_probs, all_exp_rewards, all_exp_dones = [], [], [], [], []
+        all_exp_states1, all_exp_actions1, all_exp_log_probs1, all_exp_rewards1, all_exp_dones1 = [], [], [], [], []
         for i, _ in enumerate(shm_names):
             try:
                 # Открытие shared memory
@@ -144,19 +155,32 @@ class SharedMemoryExperienceCollector:
                 
                 # Парсинг опыта
                 
-                for step in range(num_steps):
-                    if np.all(experience_buffer[step] == 0): break    
+                for step in range(num_steps * 2):
+                    if np.all(experience_buffer[step] == 0): break  
+
                     line = experience_buffer[step]
                     state = line[0:state_size]
                     action = line[state_size:state_size + action_size]
                     reward = line[state_size + action_size]
                     log_prob = line[state_size + action_size + 1]
                     done = line[state_size + action_size + 2]
-                    all_exp_states.append(state.tolist())      
-                    all_exp_actions.append(action.tolist())
-                    all_exp_log_probs.append(float(log_prob))
-                    all_exp_rewards.append(float(reward))
-                    all_exp_dones.append(float(done))
+                    all_exp_states1.append(state.tolist())      
+                    all_exp_actions1.append(action.tolist())
+                    all_exp_log_probs1.append(float(log_prob))
+                    all_exp_rewards1.append(float(reward))
+                    all_exp_dones1.append(float(done))
+
+                    # line = experience_buffer[-1 - step]
+                    # state = line[-(state_size):]
+                    # action = line[-(state_size + action_size):-(state_size)]
+                    # reward = line[-(state_size + action_size + 1)]
+                    # log_prob = line[-(state_size + action_size + 2)]
+                    # done = line[-(state_size + action_size + 3)]
+                    # all_exp_states2.append(state.tolist())      
+                    # all_exp_actions2.append(action.tolist())
+                    # all_exp_log_probs2.append(float(log_prob))
+                    # all_exp_rewards2.append(float(reward))
+                    # all_exp_dones2.append(float(done))
                 
                 
             except Exception as e:
@@ -164,21 +188,20 @@ class SharedMemoryExperienceCollector:
                 continue
 
         # После чтения shared memory из всех процессов
-        merged = Memory()
-        merged.states = all_exp_states
-        merged.actions = all_exp_actions
-        merged.old_log_probs = all_exp_log_probs
-        merged.rewards = all_exp_rewards
-        merged.is_terminals = all_exp_dones
-        merged.copy_to_tensors()
-        
-        return merged
+        merged1 = Memory()
+        merged1.states = all_exp_states1
+        merged1.actions = all_exp_actions1
+        merged1.old_log_probs = all_exp_log_probs1
+        merged1.rewards = all_exp_rewards1
+        merged1.is_terminals = all_exp_dones1
+        merged1.copy_to_tensors()
 
-def merge_memories(memories):
-    merged = Memory()
-    for mem in memories:
-        merged.states.extend(list(mem.states))
-        merged.actions.extend(list(mem.actions))
-        merged.old_log_probs.extend(list(mem.old_log_probs))
-        merged.rewards.extend(list(mem.rewards))
-    return merged 
+        # merged2 = Memory()
+        # merged2.states = all_exp_states2
+        # merged2.actions = all_exp_actions2
+        # merged2.old_log_probs = all_exp_log_probs2
+        # merged2.rewards = all_exp_rewards2
+        # merged2.is_terminals = all_exp_dones2
+        # merged2.copy_to_tensors()
+        
+        return merged1

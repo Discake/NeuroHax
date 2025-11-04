@@ -30,14 +30,6 @@ class PPO:
 
         self.plotter = Reward_plotter()
     
-    def select_action(self, state):
-        # Используем старую политику для сбора данных
-        with torch.no_grad():
-            state = state.unsqueeze(0)
-            action, log_prob, _, _ = self.policy_old.get_action(state)
-        
-        return action, log_prob  # Сохраняем log_prob
-    
     def compute_returns_and_advantages(self, rewards, values, terminals, gamma=0.99, lam=0.95):
         returns = []
         advantages = []

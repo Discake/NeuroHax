@@ -11,7 +11,7 @@ class Training_process:
         self.num_episodes = num_episodes
         self.batch_size = 4096 * 5
         self.memory = Memory()
-        self.ppo = PPO(env.net)
+        self.ppo = PPO(env.nn1)
         self.env = env
         self.save = None
         self.draw_stats = draw_stats
@@ -27,21 +27,21 @@ class Training_process:
         collector = SharedMemoryExperienceCollector(num_workers, max_steps_per_worker)
 
         for episode in range(self.num_episodes):
-            state_dict = self.ppo.policy.cpu().state_dict()  # CPU для безопасной передачи
+            state_dict1 = self.ppo.policy.cpu().state_dict()  # CPU для безопасной передачи
             
-            experiences = collector.collect_experience_shared(state_dict, Constants.state_size, Constants.action_size)
+            exp1 = collector.collect_experience_shared(state_dict1, Constants.state_size, Constants.action_size)
             self.shm_objects1 = collector.shm_objects
 
             # Обновление PPO
-            if experiences:
-                self.ppo.update(experiences, episode, self.logging)
+            if exp1:
+                self.ppo.update(exp1, episode, self.logging)
 
             for shm in collector.shm_objects:
                 shm.close()
                 shm.unlink()
 
             if save_filename is not None:
-                self.save = torch.save(self.ppo.policy.state_dict(), save_filename)
+                self.save1 = torch.save(self.ppo.policy.state_dict(), save_filename)
 
             print(f"Episode {(episode+1) * 100 / self.num_episodes}%")
 

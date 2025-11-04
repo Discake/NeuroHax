@@ -2,7 +2,7 @@ import torch
 
 # AI
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-state_size = 9 # Input of the model
+state_size = 15 # Input of the model
 action_size = 3 # Action output of the model
 
 training_time_coefficient = 2
@@ -20,9 +20,9 @@ acceleration = 0.25 # Speed increment for the player
 
 iterations = 1 * round(time_increment)
 
-friction = 100  # Friction coefficient
+friction = 0.02  # Friction coefficient
 
-kicking_power = 0.2  # Power of the kick
+kicking_power = 0.1  # Power of the kick
 kick_radius = 15  # Radius of the kick
 
 # Color

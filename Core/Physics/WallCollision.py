@@ -1,6 +1,7 @@
 import torch
 import Constants
 from Core.Physics.Utils import reflect_ball_from_point
+from Core.Objects.Ball import Ball
 
 class WallCollision():
     
@@ -12,21 +13,27 @@ class WallCollision():
 
         
 
-    def detect_collision(self, object):
+    def detect_collision(self, object : Ball):
         """Проверка столкновения шара со стеной (нулевой толщины, конечной длины)"""
         # Для вертикальной стены x = constant, y in [start, end]
         if self.is_vertical:
+            if torch.abs(object.position[1] - self.constant) < object.radius:
+                return False
+
             nearest_y = min(max(object.position[1], self.start), self.end)
             xy = torch.tensor([self.constant, nearest_y], device=Constants.device)
             xy = object.position - xy
         else:
+            if torch.abs(object.position[0] - self.constant) < object.radius:
+                return False
+
             nearest_x = min(max(object.position[0], self.start), self.end)
             xy = torch.tensor([nearest_x, self.constant], device=Constants.device)
             xy = object.position - xy
         distance2 = torch.dot(xy, xy)
         return distance2 <= object.radius**2
 
-    def resolve_collision(self, object):
+    def resolve_collision(self, object : Ball):
         
             # if self.detect_collision(object):
                 # Координаты концов стены

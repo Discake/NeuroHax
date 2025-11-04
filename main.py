@@ -7,13 +7,13 @@ if __name__ == '__main__':
 
     def training():
         app = App(play=False, draw_game=False, logging=True)
-        app.training(max_steps=1024, draw_stats=True, \
-                     load_filename="Checkpoints/Maksigma_net_ravnykh_new_method_3.pth",\
-                      save_filename="Checkpoints/test.pth")
+        app.training(max_steps=2048, draw_stats=True, \
+                     load_filename=None,\
+                      save_filename="Checkpoints/test_1_v_1.pth")
 
     def ai():
-        app = App(play=False, draw_game=True, logging=True)
-        app.start_ai_game("Checkpoints/test.pth")
+        app = App(play=True, draw_game=True, logging=True)
+        app.start_ai_game("Checkpoints/test_1_v_1.pth")
 
 
     mp.set_start_method('spawn')

@@ -20,7 +20,7 @@ device = Constants.device
 
 class App:
     def __init__(self, play, draw_game = False, drawStats = False, logging = True):
-        # Initialize Pygame
+        
         self.draw_game = draw_game
         self.logging = logging
         self.map = Map()        
@@ -67,25 +67,31 @@ class App:
 
         actions = list[Keydown_action|Net_action]()
         
-        for i in range(Constants.player_number - 1 if self.play else Constants.player_number):
+        for i in range(Constants.player_number):
             nn = Maksigma_net()
             if(load_filename is not None):
                 nn.load_state_dict(torch.load(load_filename))
             nn = nn.eval()
-            ai_action = Net_action(self.map, nn)
-            ai_action.set_player(self.map.players_team1[i])
+            ai_action = Net_action(self.map, nn, self.map.players_team1[i])
             actions.append(ai_action)
             
+        for i in range(0 if self.play else Constants.player_number):
+            nn = Maksigma_net()
+            if(load_filename is not None):
+                nn.load_state_dict(torch.load(load_filename))
+            nn = nn.eval()
+            ai_action = Net_action(self.map, nn, self.map.players_team2[i])
+            actions.append(ai_action)
             
         if self.play:
             keydown_action = Keydown_action()
             actions.append(keydown_action)
-            keydown_action.set_player(self.map.players_team1[1])  
+            keydown_action.set_player(self.map.players_team2[0])  
 
         if self.draw_game:
             # Game loop
             while running:
-                pygame.time.delay(7)  # Pause for 5 milliseconds
+                pygame.time.delay(2)  # Pause for 5 milliseconds
 
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
@@ -113,7 +119,8 @@ class App:
 
     def training(self, max_steps, load_filename = None, save_filename = None, draw_stats = False):
 
-        model = Maksigma_net().to(device=device)
+        model1 = Maksigma_net().to(device=device)
+        model2 = Maksigma_net().to(device=device)
 
         if load_filename is not None:
             checkpoint = torch.load(load_filename)
@@ -123,6 +130,6 @@ class App:
         print(f"Computation on device: {device}")
         
 
-        t = Training_process(Environment(model), draw_stats=draw_stats)
+        t = Training_process(Environment(model1, model2), draw_stats=draw_stats)
         
         return t.train(draw_stats=draw_stats, max_steps_per_worker=max_steps, save_filename=save_filename)

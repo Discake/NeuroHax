@@ -18,7 +18,8 @@ class Map:
         self.walls = list[WallCollision]()
 
         self.score = [0, 0]
-        self.kick_flag = False
+        self.kick_flag_team1 = False
+        self.kick_flag_team2 = False
         self.time_increment = Constants.time_increment
 
         self.add_balls()
@@ -62,9 +63,19 @@ class Map:
             player.set_color(Constants.player_color)
             self.players_team1.append(player)
 
+        for i in range(Constants.player_number):
+            player = Player(
+                Constants.players_positions_team2[i],
+                Constants.player_radius,
+                Constants.player_mass,
+                Constants.max_player_speed)
+            player.set_color(Constants.player_color)
+            self.players_team2.append(player)
+
     def move_balls(self):
         
-        self.kick_flag = False
+        self.kick_flag_team1 = False
+        self.kick_flag_team2 = False
         # Итерации нужны для обеспечения разрешимости коллизий при высоких скоростях
         for _ in range(Constants.iterations):
             for ball in self.all_balls:
@@ -84,12 +95,6 @@ class Map:
                     for line in gate.boundaries:
                         if line.detect_collision(ball):
                             line.resolve_collision(ball)
-
-                # Пинок мяча
-                if isinstance(ball, Player):
-                    for other_ball in self.balls:
-                        if ball.is_kicking:
-                            self.kick(ball, other_ball) 
             
             # Коллизия мяча и границы поля
             for ball in self.balls:
@@ -98,10 +103,27 @@ class Map:
                         wall.resolve_collision(ball)
                         self.wall_hit = True
 
+            # Пинок мяча
+            for player in self.players_team1:
+                for ball in self.balls:
+                    if player.is_kicking:
+                        self.kick(player, ball)
+                        self.kick_flag_team1 = True
+
+            for player in self.players_team2:
+                for ball in self.balls:
+                    if player.is_kicking:
+                        self.kick(player, ball)
+                        self.kick_flag_team2 = True
+
 
     def kick(self, ball : Player, other_ball : Ball):
         ball_pos = ball.position
         other_ball_pos = other_ball.position
+
+        if torch.abs(ball_pos[0] - other_ball_pos[0]) >  ball.radius + other_ball.radius + Constants.kick_radius or \
+                torch.abs(ball_pos[1] - other_ball_pos[1]) > ball.radius + other_ball.radius + Constants.kick_radius:
+            return
                                 
         direction = ball_pos - other_ball_pos
         dist = torch.dot(direction, direction)
@@ -126,7 +148,7 @@ class Map:
 
         self.balls[0].position = torch.tensor([Constants.x_center, Constants.y_center], device=Constants.device)
 
-    def load_random(self): # Метод загрузки всех игроков и мячей на начальные позиции
+    def load(self): # Метод загрузки всех игроков и мячей на начальные позиции
         self.kick_flag = False
 
         for i, player in enumerate(self.players_team1):
