@@ -3,7 +3,7 @@ if __name__ == '__main__':
     import torch.multiprocessing as mp
     from App import App
 
-    do_training = False
+    do_training = True
 
     def training():
         app = App(play=False, draw_game=False, logging=True)

@@ -93,13 +93,13 @@ class Map:
                 # Коллизия шаров и ворот
                 for gate in self.gates:
                     for line in gate.boundaries:
-                        if line.detect_collision(ball):
+                        if line.detect_collision_pure_python(ball):
                             line.resolve_collision(ball)
             
             # Коллизия мяча и границы поля
             for ball in self.balls:
                 for wall in self.walls:
-                    if wall.detect_collision(ball):
+                    if wall.detect_collision_pure_python(ball):
                         wall.resolve_collision(ball)
                         self.wall_hit = True
 
@@ -121,8 +121,8 @@ class Map:
         ball_pos = ball.position
         other_ball_pos = other_ball.position
 
-        if torch.abs(ball_pos[0] - other_ball_pos[0]) >  ball.radius + other_ball.radius + Constants.kick_radius or \
-                torch.abs(ball_pos[1] - other_ball_pos[1]) > ball.radius + other_ball.radius + Constants.kick_radius:
+        if abs(ball_pos[0] - other_ball_pos[0]) >  ball.radius + other_ball.radius + Constants.kick_radius or \
+                abs(ball_pos[1] - other_ball_pos[1]) > ball.radius + other_ball.radius + Constants.kick_radius:
             return
                                 
         direction = ball_pos - other_ball_pos

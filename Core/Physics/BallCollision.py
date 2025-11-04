@@ -13,9 +13,9 @@ class BallCollision():
         ball1 = self.object1
         ball2 = object2
 
-        if torch.abs(ball1.position[0] - ball2.position[0]) > ball1.radius + ball2.radius:
+        if abs(ball1.position[0] - ball2.position[0]) > ball1.radius + ball2.radius:
             return False
-        if torch.abs(ball1.position[1] - ball2.position[1]) > ball1.radius + ball2.radius:
+        if abs(ball1.position[1] - ball2.position[1]) > ball1.radius + ball2.radius:
             return False
 
         # Квадрат расстояния между центрами шаров

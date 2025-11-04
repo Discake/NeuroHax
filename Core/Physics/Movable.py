@@ -25,8 +25,8 @@ class Movable(BallCollision):
         self.apply_air_resistance(time_increment)
             
     def resolve_position(self, time):
-        self.position = self.position + self.velocity * time
-        self.velocity = self.velocity + self.acceleration * time
+        self.position = self.position.add_(self.velocity * time)
+        self.velocity = self.velocity.add_(self.acceleration * time)
 
     def apply_air_resistance(self, time):
         

@@ -74,12 +74,12 @@ class Environment:
 
 
         d1 = player1.position - ball.position
-        dist1 = torch.abs(d1.norm() - player1.radius - ball.radius + 0.00001)
+        dist1 = abs(d1.norm() - player1.radius - ball.radius + 0.00001)
 
         reward_big_dist1 = dist1
         
         d2 = player1.position - ball.position
-        dist2 = torch.abs(d2.norm() - player2.radius - ball.radius + 0.00001)
+        dist2 = abs(d2.norm() - player2.radius - ball.radius + 0.00001)
 
         reward_big_dist2 = dist2
         

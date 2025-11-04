@@ -17,3 +17,4 @@
 *.cpython-313.pyc
 *.pth
 !Maksigma_net_ravnykh_2.pth
+simulation_profile.prof

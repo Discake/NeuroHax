@@ -124,7 +124,10 @@ class App:
 
         if load_filename is not None:
             checkpoint = torch.load(load_filename)
-            model.load_state_dict(checkpoint)
+            model1.load_state_dict(checkpoint)
+            print(f"Model loaded successfully from: {load_filename}")
+            checkpoint = torch.load(load_filename)
+            model2.load_state_dict(checkpoint)
             print(f"Model loaded successfully from: {load_filename}")
         
         print(f"Computation on device: {device}")

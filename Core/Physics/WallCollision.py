@@ -6,32 +6,69 @@ from Core.Objects.Ball import Ball
 class WallCollision():
     
     def __init__(self, start, end, constant, is_vertical):
-        self.start = start
-        self.end = end
-        self.constant = constant
+        # Сразу конвертируем в Python float
+        self.start = float(start)
+        self.end = float(end) 
+        self.constant = float(constant)
         self.is_vertical = is_vertical
 
         
 
     def detect_collision(self, object : Ball):
         """Проверка столкновения шара со стеной (нулевой толщины, конечной длины)"""
-        # Для вертикальной стены x = constant, y in [start, end]
+
+        with torch.no_grad():
+            # Для вертикальной стены x = constant, y in [start, end]
+            if self.is_vertical:
+                if abs(object.position[0] - self.constant) > object.radius:
+                    return False
+
+                nearest_y = min(max(object.position[1], self.start), self.end)
+                xy = torch.tensor([self.constant, nearest_y], device=Constants.device)
+                xy = object.position - xy
+            else:
+                if abs(object.position[1] - self.constant) > object.radius:
+                    return False
+
+                nearest_x = min(max(object.position[0], self.start), self.end)
+                xy = torch.tensor([nearest_x, self.constant], device=Constants.device)
+                xy = object.position - xy
+            distance2 = torch.dot(xy, xy)
+            return distance2 <= object.radius**2
+        
+    def detect_collision_pure_python(self, obj):
+        """Чистый Python без PyTorch операций"""
+        # Извлекаем координаты один раз в начале функции
+        obj_pos = obj.position
+        pos_x = float(obj_pos[0])  # Быстрая конвертация
+        pos_y = float(obj_pos[1])
+        radius_sq = obj.radius * obj.radius  # Python float операция
+        
         if self.is_vertical:
-            if torch.abs(object.position[1] - self.constant) < object.radius:
-                return False
-
-            nearest_y = min(max(object.position[1], self.start), self.end)
-            xy = torch.tensor([self.constant, nearest_y], device=Constants.device)
-            xy = object.position - xy
+            # Зажимаем Y без функций min/max - используем if
+            if pos_y < self.start:
+                nearest_y = self.start
+            elif pos_y > self.end:
+                nearest_y = self.end
+            else:
+                nearest_y = pos_y
+                
+            dx = pos_x - self.constant
+            dy = pos_y - nearest_y
         else:
-            if torch.abs(object.position[0] - self.constant) < object.radius:
-                return False
+            # Зажимаем X аналогично
+            if pos_x < self.start:
+                nearest_x = self.start
+            elif pos_x > self.end:
+                nearest_x = self.end
+            else:
+                nearest_x = pos_x
+                
+            dx = pos_x - nearest_x
+            dy = pos_y - self.constant
+            
+        return dx*dx + dy*dy <= radius_sq
 
-            nearest_x = min(max(object.position[0], self.start), self.end)
-            xy = torch.tensor([nearest_x, self.constant], device=Constants.device)
-            xy = object.position - xy
-        distance2 = torch.dot(xy, xy)
-        return distance2 <= object.radius**2
 
     def resolve_collision(self, object : Ball):
         
