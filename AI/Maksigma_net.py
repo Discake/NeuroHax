@@ -1,115 +1,142 @@
 import torch
 import torch.nn as nn
-
+import torch.nn.functional as F
 import Constants
 
 class Maksigma_net(nn.Module):
     def __init__(self, state_dim=Constants.state_size, hidden_dim=64):
-        self.name = "Maksigma_net_ravnykh"
         super().__init__()
-        # Shared layers (feature extractor)
+        self.name = "AngleSpeed_Correct"
+        
         self.shared = nn.Sequential(
             nn.Linear(state_dim, hidden_dim),
             nn.Tanh(),
-        ).to(device=Constants.device)
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.Tanh(),
+        )
         
-        # --- Actor Head for velocity (continuous 2D) ---
-        self.actor_velocity = nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.Tanh(),
-        ).to(device=Constants.device)
-        self.velocity_mean = nn.Linear(hidden_dim, 2)      # output: [mu_x, mu_y]
-        self.velocity_log_sigma = nn.Linear(hidden_dim, 2) # output: [log_sigma_x, log_sigma_y]
-
-        # --- Actor Head for kick (discrete) ---
-        self.actor_kick = nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.Tanh(),
-        ).to(device=Constants.device)
-        self.kick_logit = nn.Linear(hidden_dim, 1)         # output: логит (до sigmoid)
-
-        # --- Critic Head (state value) ---
-        self.critic = nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.Tanh(),
-            nn.Linear(hidden_dim, 1),                      # output: скаляр value
-        ).to(device=Constants.device)
-
+        # === ANGLE + SPEED HEADS ===
+        self.angle_head = nn.Linear(hidden_dim, 2)    # [mean, log_std]
+        self.speed_head = nn.Linear(hidden_dim, 2)    # [mean, log_std] 
+        self.kick_head = nn.Linear(hidden_dim, 1)
+        self.value_head = nn.Linear(hidden_dim, 1)
+        
+        self._init_weights()
+    
+    def _init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight, gain=0.5)
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+    
     def forward(self, state):
-        x = self.shared(state)  # [batch, hidden]
-        # Actor velocity
-        av = self.actor_velocity(x)           # [batch, hidden]
-        velocity_mean = self.velocity_mean(av)         # [batch, 2]
-        velocity_log_sigma = self.velocity_log_sigma(av) # [batch, 2] (можно clamp для стабильности)
-
-        # Actor kick (можно не выделять kick отдельный путь — для простых задач достаточно shared x)
-        ak = self.actor_kick(x)
-        kick_logit = self.kick_logit(ak).squeeze(-1)     # [batch] или [batch, 1]
-
-        # Critic
-        value = self.critic(x).squeeze(-1)               # [batch]
-
-        return velocity_mean, velocity_log_sigma, kick_logit, value
+        if state.dim() == 1:
+            state = state.unsqueeze(0)
+            
+        x = self.shared(state)
+        
+        # Angle parameters
+        angle_params = self.angle_head(x)  # [batch, 2]
+        angle_mean = angle_params[:, 0]    # [batch]
+        angle_log_std = angle_params[:, 1].clamp(-2, 1)  # [batch], ограничиваем
+        
+        # Speed parameters  
+        speed_params = self.speed_head(x)  # [batch, 2]
+        speed_mean = speed_params[:, 0]    # [batch]
+        speed_log_std = speed_params[:, 1].clamp(-2, 1)  # [batch]
+        
+        kick_logit = self.kick_head(x).squeeze(-1)  # [batch]
+        value = self.value_head(x).squeeze(-1)      # [batch]
+        
+        return angle_mean, angle_log_std, speed_mean, speed_log_std, kick_logit, value
     
     def get_action(self, state):
-        # 1. Прямой проход через actor-critic сеть
-        velocity_mean, log_sigma, kick_logit, value = self.forward(state)
+        angle_mean, angle_log_std, speed_mean, speed_log_std, kick_logit, value = self.forward(state)
         
-        # 2. Создаём распределения
-        sigma = torch.exp(log_sigma).clamp(min=0.01, max=1.5)
-        velocity_dist = torch.distributions.Normal(velocity_mean, sigma)
+        # === СОЗДАЕМ РАСПРЕДЕЛЕНИЯ ===
+        angle_std = torch.exp(angle_log_std)
+        angle_dist = torch.distributions.Normal(angle_mean, angle_std)
+        
+        # Для скорости используем Normal, а потом softplus для положительности
+        speed_std = torch.exp(speed_log_std) 
+        speed_dist = torch.distributions.Normal(speed_mean, speed_std)
+        
         kick_dist = torch.distributions.Bernoulli(logits=kick_logit)
         
-        # 3. СЕМПЛИРУЕМ действие (с шумом для exploration)
-        velocity_raw = velocity_dist.rsample()
+        # === СЕМПЛИРУЕМ ДЕЙСТВИЯ ===
+        angle_raw = angle_dist.rsample()  # Сырой угол (может быть любым)
+        speed_raw = speed_dist.rsample()  # Сырая скорость (может быть отрицательной)
         kick = kick_dist.sample()
         
-        # 4. Вычисляем log_prob ДО преобразований
-        velocity_logp = velocity_dist.log_prob(velocity_raw).sum(-1)
+        # === ПРИМЕНЯЕМ ПРЕОБРАЗОВАНИЯ ===
+        # Нормализация угла в [-π, π]
+        angle_normalized = torch.remainder(angle_raw + torch.pi, 2 * torch.pi) - torch.pi
+        
+        # Положительная скорость через softplus
+        speed_positive = F.softplus(speed_raw).clamp(0.01, Constants.max_player_speed)
+        
+        # === КОНВЕРТИРУЕМ В ДЕКАРТОВЫ КООРДИНАТЫ ===
+        velocity_x = speed_positive * torch.cos(angle_normalized)
+        velocity_y = speed_positive * torch.sin(angle_normalized)
+        
+        # === СОХРАНЯЕМ СЫРЫЕ ЗНАЧЕНИЯ ДЛЯ LOG_PROB ===
+        action_raw = torch.stack([angle_raw, speed_raw, kick], dim=-1)
+        action_final = torch.stack([velocity_x, velocity_y, kick], dim=-1)
+        
+        # === LOG_PROB ОТ СЫРЫХ ЗНАЧЕНИЙ ===
+        angle_logp = angle_dist.log_prob(angle_raw)
+        speed_logp = speed_dist.log_prob(speed_raw)
         kick_logp = kick_dist.log_prob(kick)
-        total_logp = velocity_logp + kick_logp
-        total_entropy = velocity_dist.entropy().sum(-1) + kick_dist.entropy()
+        total_logp = angle_logp + speed_logp + kick_logp
         
-        # 5. Применяем ограничения (tanh/sigmoid)
-        velocity_action = torch.tanh(velocity_raw)
+        entropy = angle_dist.entropy() + speed_dist.entropy() + kick_dist.entropy()
         
-        # 6. Формируем полное действие
-        action = torch.cat([velocity_action, kick.unsqueeze(-1)], dim=-1)
-        
-        return action, total_logp, value, total_entropy
+        return action_final, action_raw, total_logp, value, entropy
     
-    def evaluate_actions(self, states, actions):
-        # 1. Прямой проход через сеть (С ГРАДИЕНТАМИ!)
-        velocity_mean, log_sigma, kick_logit, values = self.forward(states)
+    def evaluate_actions(self, states, actions_final, actions_raw):
+        """
+        КЛЮЧ: Принимаем ОБА - финальные действия И сырые параметры
+        """
+        angle_mean, angle_log_std, speed_mean, speed_log_std, kick_logit, values = self.forward(states)
         
-        # 2. Извлекаем компоненты действий
-        velocity_actions = actions[:, :2]  # Первые 2 компоненты
-        kick_actions = actions[:, 2]       # Третья компонента
+        # Извлекаем сырые параметры (ТЕ ЖЕ, что использовались для log_prob)
+        angle_raw = actions_raw[:, 0]
+        speed_raw = actions_raw[:, 1] 
+        kick_actions = actions_raw[:, 2]
         
-        # 3. Создаём распределения с текущими параметрами
-        sigma = torch.exp(log_sigma).clamp(min=0.01, max=1.5)
-        velocity_dist = torch.distributions.Normal(velocity_mean, sigma)
+        # === ВОССОЗДАЕМ ТЕ ЖЕ РАСПРЕДЕЛЕНИЯ ===
+        angle_std = torch.exp(angle_log_std)
+        angle_dist = torch.distributions.Normal(angle_mean, angle_std)
+        
+        speed_std = torch.exp(speed_log_std)
+        speed_dist = torch.distributions.Normal(speed_mean, speed_std)
+        
         kick_dist = torch.distributions.Bernoulli(logits=kick_logit)
         
-        # 4. ВАЖНО: НЕ семплируем, а вычисляем log_prob для СУЩЕСТВУЮЩИХ действий
-        # Если действие прошло через tanh, нужно обратить преобразование
-        velocity_raw = torch.atanh(velocity_actions.clamp(-0.9999, 0.9999))
-        
-        velocity_logp = velocity_dist.log_prob(velocity_raw).sum(-1)
+        # === LOG_PROB ОТ ТЕХ ЖЕ СЫРЫХ ЗНАЧЕНИЙ ===
+        angle_logp = angle_dist.log_prob(angle_raw)
+        speed_logp = speed_dist.log_prob(speed_raw)
         kick_logp = kick_dist.log_prob(kick_actions)
-        total_logp = velocity_logp + kick_logp
+        total_logp = angle_logp + speed_logp + kick_logp
         
-        # 5. Вычисляем энтропию
-        velocity_entropy = velocity_dist.entropy().sum(-1)
-        kick_entropy = kick_dist.entropy()
-        total_entropy = velocity_entropy + kick_entropy
+        entropy = angle_dist.entropy() + speed_dist.entropy() + kick_dist.entropy()
         
-        return total_logp, values.squeeze(-1), total_entropy
+        return total_logp, values, entropy
     
     def select_action(self, state):
-        # Используем старую политику для сбора данных
         with torch.no_grad():
-            state = state.unsqueeze(0)
-            action, log_prob, _, _ = self.get_action(state)
+            if state.dim() == 1:
+                state = state.unsqueeze(0)
+                squeeze_output = True
+            else:
+                squeeze_output = False
+            
+            action_final, action_raw, log_prob, _, _ = self.get_action(state)
+            
+            if squeeze_output:
+                action_final = action_final.squeeze(0)
+                action_raw = action_raw.squeeze(0)
+                log_prob = log_prob.squeeze(0)
         
-        return action, log_prob  # Сохраняем log_prob
+        return action_final, action_raw, log_prob  # Возвращаем ОБА!

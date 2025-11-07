@@ -1,4 +1,5 @@
 from AI.Maksigma_net import Maksigma_net
+from AI.Simple import UltraSimplePolicy
 from Core.Objects.Map import Map
 import Constants
 from Player_actions.Keydown_action import Keydown_action
@@ -68,19 +69,19 @@ class App:
         actions = list[Keydown_action|Net_action]()
         
         for i in range(Constants.player_number):
-            nn = Maksigma_net()
+            nn = UltraSimplePolicy()
             if(load_filename is not None):
                 nn.load_state_dict(torch.load(load_filename))
             nn = nn.eval()
-            ai_action = Net_action(self.map, nn, self.map.players_team1[i])
+            ai_action = Net_action(self.map, nn, self.map.players_team1[i], is_team_1=True)
             actions.append(ai_action)
             
         for i in range(0 if self.play else Constants.player_number):
-            nn = Maksigma_net()
+            nn = UltraSimplePolicy()
             if(load_filename is not None):
                 nn.load_state_dict(torch.load(load_filename))
             nn = nn.eval()
-            ai_action = Net_action(self.map, nn, self.map.players_team2[i])
+            ai_action = Net_action(self.map, nn, self.map.players_team2[i], is_team_1=False)
             actions.append(ai_action)
             
         if self.play:
@@ -101,7 +102,12 @@ class App:
                             action.set_event(event)
 
                 for action in actions:
-                    action.act()
+                    if isinstance(action, Net_action):
+                        input_to_net = action.translator.translate_input()
+                        input_to_act, _  = action.net.select_action(input_to_net)
+                        action.act(input_to_act)
+                    else:
+                        action.act()
 
                 self.drawing.draw()
                 self.map.move_balls()  # Move balls and resolve collisions               
@@ -119,8 +125,8 @@ class App:
 
     def training(self, max_steps, load_filename = None, save_filename = None, draw_stats = False):
 
-        model1 = Maksigma_net().to(device=device)
-        model2 = Maksigma_net().to(device=device)
+        model1 = UltraSimplePolicy().to(device=device)
+        model2 = UltraSimplePolicy().to(device=device)
 
         if load_filename is not None:
             checkpoint = torch.load(load_filename)
@@ -133,6 +139,6 @@ class App:
         print(f"Computation on device: {device}")
         
 
-        t = Training_process(Environment(model1, model2), draw_stats=draw_stats)
+        t = Training_process(Environment(model1, model2, num_steps=max_steps), draw_stats=draw_stats)
         
         return t.train(draw_stats=draw_stats, max_steps_per_worker=max_steps, save_filename=save_filename)

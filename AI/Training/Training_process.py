@@ -7,7 +7,7 @@ from AI.Training.Environment import Environment
 import Constants
 
 class Training_process:
-    def __init__(self, env : Environment, draw_stats = False, num_episodes = 10000):
+    def __init__(self, env : Environment, draw_stats = False, num_episodes = 100):
         self.num_episodes = num_episodes
         self.batch_size = 4096 * 5
         self.memory = Memory()
@@ -34,7 +34,9 @@ class Training_process:
 
             # Обновление PPO
             if exp1:
-                self.ppo.update(exp1, episode, self.logging)
+                self.ppo.update_with_minibatches_default(exp1, episode)
+                # self.ppo.update_with_minibatches(exp1, episode)
+                # self.ppo.update(exp1, episode, self.logging)
 
             for shm in collector.shm_objects:
                 shm.close()

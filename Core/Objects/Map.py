@@ -107,17 +107,16 @@ class Map:
             for player in self.players_team1:
                 for ball in self.balls:
                     if player.is_kicking:
-                        self.kick(player, ball)
-                        self.kick_flag_team1 = True
+                        self.kick(player, ball, is_team_1=True)
+                        
 
             for player in self.players_team2:
                 for ball in self.balls:
                     if player.is_kicking:
-                        self.kick(player, ball)
-                        self.kick_flag_team2 = True
+                        self.kick(player, ball, is_team_1=False)
 
 
-    def kick(self, ball : Player, other_ball : Ball):
+    def kick(self, ball : Player, other_ball : Ball, is_team_1):
         ball_pos = ball.position
         other_ball_pos = other_ball.position
 
@@ -130,6 +129,10 @@ class Map:
         if dist < (ball.radius + other_ball.radius + Constants.kick_radius) ** 2:
             ball.kick(other_ball, direction)
             self.kick_flag = True
+            if is_team_1:
+                self.kick_flag_team1 = True
+            else:
+                self.kick_flag_team2 = True
 
     def load_random(self): # Метод загрузки первого игрока на поле в случайной позиции
 
