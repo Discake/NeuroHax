@@ -136,20 +136,19 @@ class Map:
 
     def load_random(self): # Метод загрузки первого игрока на поле в случайной позиции
 
-        self.kick_flag = False
-        self.hit_flag = False
-        self.time_increment = (random.random() - 0.5) * Constants.time_increment + Constants.time_increment 
-        
-        is_right = random.randint(0, 1)
-        y_pos = random.randint(0, Constants.field_size[1] - self.players_team1[0].radius)
+        for i, player in enumerate(self.players_team1):
+            player.position = Constants.players_positions_team1[i]
+            player.position[1] = random.randint(Constants.field_margin + player.radius, Constants.window_size[1] - Constants.field_margin - player.radius)
+            player.velocity = torch.tensor([0., 0.], device=Constants.device)
 
-        if is_right:
-            self.players_team1.position[0] = Constants.players_positions_team1[0][0]
-        else:
-            self.players_team1[0].position[0] = Constants.players_positions_team2[0][0]
-        self.players_team1[0].position[1] = Constants.field_margin / 2 + y_pos
+        for i, player in enumerate(self.players_team2):
+            player.position = Constants.players_positions_team2[i]
+            player.position[1] = random.randint(Constants.field_margin + player.radius, Constants.window_size[1] - Constants.field_margin - player.radius)
+            player.velocity = torch.tensor([0., 0.], device=Constants.device)
 
-        self.balls[0].position = torch.tensor([Constants.x_center, Constants.y_center], device=Constants.device)
+        for i, ball in enumerate(self.balls):
+            ball.position = Constants.balls_positions[i]
+            ball.velocity = torch.tensor([0., 0.], device=Constants.device) 
 
     def load(self): # Метод загрузки всех игроков и мячей на начальные позиции
         self.kick_flag = False

@@ -11,7 +11,9 @@ class Player_action:
 
             temp = input.squeeze(0)
 
-            self.player.velocity[0] = Constants.acceleration * temp[0]
-            self.player.velocity[1] = Constants.acceleration * temp[1]
+            # self.player.velocity[0] = Constants.acceleration * temp[0]
+            # self.player.velocity[1] = Constants.acceleration * temp[1]
+            self.player.velocity[0] += temp[0] * Constants.acceleration
+            self.player.velocity[1] += temp[1] * Constants.acceleration
             self.player.set_kicking(temp[2] > 0)
 
