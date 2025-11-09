@@ -29,18 +29,21 @@ class Environment:
 
         self.count += 1
 
-        r1, r2, done = self.calculate_rewards()
+        r1, r2, natural_done = self.calculate_rewards()
 
-        if not done:
-            done = self.count > (self.num_steps - 3)
-
-        if done:
-            print("DONE!")
+         # === ОПРЕДЕЛЯЕМ truncated ===
+        truncated = self.count >= (self.num_steps - 3)
+        
+        # Эпизод завершён, если естественный конец ИЛИ таймаут
+        done = natural_done or truncated
+        
+        info = {'truncated': truncated, 'natural_done': natural_done}
+        
         
         s1 = self.net_action_team1.translator.translate_input()
         s2 = self.net_action_team2.translator.translate_input()
 
-        return (s1, s2), (r1, r2), done
+        return (s1, s2), (r1, r2), done, info
 
     def reset(self):
         self.count = 0
@@ -80,13 +83,13 @@ class Environment:
         
         # === 1. НАГРАДЫ ЗА УДАРЫ (умеренные, не экстремальные) ===
         if self.map.kick_flag_team1:
-            r_team1 += 10.0 * self.kick_count_modifier_team1 # Было 200!
-            r_team2 -= 9.0 * self.kick_count_modifier_team1
+            r_team1 += 7.0 # Было 200!
+            r_team2 -= 5.0
             self.kick_count_modifier_team1 += 1
         
         if self.map.kick_flag_team2:
-            r_team2 += 10.0 * self.kick_count_modifier_team2
-            r_team1 -= 9.0 * self.kick_count_modifier_team2
+            r_team2 += 7.0
+            r_team1 -= 5.0
             self.kick_count_modifier_team2 += 1
         
         # === 2. НАГРАДЫ ЗА ПРИБЛИЖЕНИЕ К МЯЧУ ===

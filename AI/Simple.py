@@ -40,7 +40,6 @@ class UltraSimplePolicy(nn.Module):
         nn.init.constant_(self.velocity_std_head.bias, -1.0)  # exp(-1) = 0.37
     
     def forward(self, state):
-        # Обработка размерности
         if state.dim() == 1:
             state = state.unsqueeze(0)
             single_sample = True
@@ -49,17 +48,18 @@ class UltraSimplePolicy(nn.Module):
             
         x = self.shared(state)
         
-        # === ОБУЧАЕМЫЕ ВЫХОДЫ ===
+        # === УПРОЩЁННЫЕ ВЫХОДЫ БЕЗ TANH ===
         velocity_mean = self.velocity_mean_head(x)
-        velocity_log_std = self.velocity_std_head(x)                  # Любые значения
-        
-        # === ОГРАНИЧИВАЕМ LOG_STD ДЛЯ СТАБИЛЬНОСТИ ===
-        velocity_log_std = torch.clamp(velocity_log_std, -3, 1)       # exp(-3)=0.05, exp(1)=2.7
+        velocity_log_std = self.velocity_std_head(x)
+
+        if self.training:
+            velocity_log_std = torch.clamp(velocity_log_std, -2, 1)
+        else:
+            velocity_log_std = torch.clamp(velocity_log_std, -2, -1.9)
         
         kick_logit = self.kick_head(x).squeeze(-1)
         value = self.value_head(x).squeeze(-1)
         
-        # Возвращаем в исходной размерности если нужно
         if single_sample:
             velocity_mean = velocity_mean.squeeze(0)
             velocity_log_std = velocity_log_std.squeeze(0)
@@ -71,38 +71,27 @@ class UltraSimplePolicy(nn.Module):
     def get_action(self, state):
         velocity_mean, velocity_log_std, kick_logit, value = self.forward(state)
         
-        # === ВЫЧИСЛЯЕМ ОБУЧАЕМУЮ STD ===
-        velocity_std = torch.exp(velocity_log_std)  # Всегда положительная
+        velocity_std = torch.exp(velocity_log_std)
         
-        # Распределения
         velocity_dist = torch.distributions.Normal(velocity_mean, velocity_std)
         kick_dist = torch.distributions.Bernoulli(logits=kick_logit)
         
-        # Sample actions
-        velocity_raw = velocity_dist.rsample()  # [-1, 1] диапазон
-        velocity_squashed = torch.tanh(velocity_raw)
-
+        # === ПРЯМОЙ СЭМПЛИНГ БЕЗ TANH ===
+        velocity = velocity_dist.rsample()
+        
+        # Ограничиваем действия в разумных пределах
+        velocity = torch.clamp(velocity, -3, 3)  # Или используйте ваш max_velocity
+        
         kick = kick_dist.sample()
         
-        # === МАСШТАБИРОВАНИЕ К РЕАЛЬНЫМ СКОРОСТЯМ ===
-        # velocity_scaled = velocity_squashed * Constants.acceleration
-        velocity_scaled = velocity_squashed
-        
         # Формируем action
-        if velocity_scaled.dim() == 1:
-            action = torch.cat([velocity_scaled, kick.unsqueeze(-1)], dim=-1)
+        if velocity.dim() == 1:
+            action = torch.cat([velocity, kick.unsqueeze(-1)], dim=-1)
         else:
-            action = torch.cat([velocity_scaled, kick.unsqueeze(-1)], dim=-1)
+            action = torch.cat([velocity, kick.unsqueeze(-1)], dim=-1)
         
-        # Log probabilities
-        velocity_logp = velocity_dist.log_prob(velocity_raw).sum(-1)
-        # === КОРРЕКЦИЯ ДЛЯ TANH TRANSFORM ===
-        # log_prob нужно скорректировать на Jacobian детерминант tanh
-        log_det_jacobian = torch.sum(
-            torch.log(1 - velocity_squashed.pow(2) + 1e-6), dim=-1
-        )
-        velocity_logp = velocity_logp - log_det_jacobian
-        
+        # === ПРОСТЫЕ LOG PROBS ===
+        velocity_logp = velocity_dist.log_prob(velocity).sum(-1)
         kick_logp = kick_dist.log_prob(kick)
         total_logp = velocity_logp + kick_logp
         
@@ -113,31 +102,15 @@ class UltraSimplePolicy(nn.Module):
     def evaluate_actions(self, states, actions):
         velocity_mean, velocity_log_std, kick_logit, values = self.forward(states)
         
-        velocity_scaled = actions[:, :2]
+        velocity_actions = actions[:, :2]
         kick_actions = actions[:, 2]
-        
-        # Обратное преобразование
-        # velocity_squashed = velocity_scaled / Constants.acceleration
-        velocity_squashed = velocity_scaled
-        
-        # === ATANH для получения исходного значения ===
-        # Безопасный atanh
-        velocity_squashed_safe = torch.clamp(velocity_squashed, -0.999, 0.999)
-        velocity_raw = torch.atanh(velocity_squashed_safe)
         
         velocity_std = torch.exp(velocity_log_std)
         velocity_dist = torch.distributions.Normal(velocity_mean, velocity_std)
         kick_dist = torch.distributions.Bernoulli(logits=kick_logit)
         
-        # Log prob от исходного
-        velocity_logp = velocity_dist.log_prob(velocity_raw).sum(-1)
-        
-        # Коррекция на Jacobian
-        log_det_jacobian = torch.sum(
-            torch.log(1 - velocity_squashed_safe.pow(2) + 1e-6), dim=-1
-        )
-        velocity_logp = velocity_logp - log_det_jacobian
-        
+        # === ПРЯМОЕ ВЫЧИСЛЕНИЕ БЕЗ ATANH ===
+        velocity_logp = velocity_dist.log_prob(velocity_actions).sum(-1)
         kick_logp = kick_dist.log_prob(kick_actions)
         total_logp = velocity_logp + kick_logp
         

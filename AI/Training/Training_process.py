@@ -18,7 +18,7 @@ class Training_process:
         self.logging = False
         
 
-    def train(self, num_workers = 10, max_steps_per_worker = 1024, draw_stats = True, \
+    def train(self, num_workers = 8, max_steps_per_worker = 1024, draw_stats = True, \
               save_filename = None):
         self.logging = draw_stats
 

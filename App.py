@@ -1,4 +1,5 @@
 from AI.Maksigma_net import Maksigma_net
+from AI.SeparateNetworkPolicy import SeparateNetworkPolicy
 from AI.Simple import UltraSimplePolicy
 from Core.Objects.Map import Map
 import Constants
@@ -69,7 +70,7 @@ class App:
         actions = list[Keydown_action|Net_action]()
         
         for i in range(Constants.player_number):
-            nn = UltraSimplePolicy()
+            nn = SeparateNetworkPolicy()
             if(load_filename is not None):
                 nn.load_state_dict(torch.load(load_filename))
             nn = nn.eval()
@@ -77,7 +78,7 @@ class App:
             actions.append(ai_action)
             
         for i in range(0 if self.play else Constants.player_number):
-            nn = UltraSimplePolicy()
+            nn = SeparateNetworkPolicy()
             if(load_filename is not None):
                 nn.load_state_dict(torch.load(load_filename))
             nn = nn.eval()
@@ -125,8 +126,8 @@ class App:
 
     def training(self, max_steps, load_filename = None, save_filename = None, draw_stats = False):
 
-        model1 = UltraSimplePolicy().to(device=device)
-        model2 = UltraSimplePolicy().to(device=device)
+        model1 = SeparateNetworkPolicy().to(device=device)
+        model2 = SeparateNetworkPolicy().to(device=device)
 
         if load_filename is not None:
             checkpoint = torch.load(load_filename)
