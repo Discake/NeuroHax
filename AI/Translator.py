@@ -22,8 +22,8 @@ class Translator:
         else:
             my_player = self.map.players_team2[0]
             opponent_player = self.map.players_team1[0]
-            flip_coords = False  # Отражаем поле для team2
-            # flip_coords = True  # Отражаем поле для team2
+            # flip_coords = False  # Отражаем поле для team2
+            flip_coords = True  # Отражаем поле для team2
         
         ball = self.map.balls[0]
         
@@ -68,14 +68,12 @@ class Translator:
             # Информация противника (5) 
             opp_pos_x, opp_pos_y, opp_vel_x, opp_vel_y, opp_kicking,
             # Информация о мяче (4)
-            ball_pos_x, ball_pos_y, ball_vel_x, ball_vel_y
+            ball_pos_x, ball_pos_y, ball_vel_x, ball_vel_y,
+            # 1.0 if self.is_team_1 else -1.0
         ], device=Constants.device)
         
-        # === ПРОВЕРКА ДИАПАЗОНА ===
-        out_of_range = torch.any((state > 1.1) | (state < -1.1))
-        # if out_of_range:
-            # print(f"error in input")
-            # Принудительно обрезаем
-            # state = torch.clamp(state, -1.0, 1.0)
+        # side_flag = int(bool(self.is_team_1))   # Важно: 0 или 1 (например, bool(player.is_team1))
+        # side_flag = 1   # Важно: 0 или 1 (например, bool(player.is_team1))
+        # state = torch.cat([state, torch.tensor([side_flag], dtype=torch.int)])
         
         return state

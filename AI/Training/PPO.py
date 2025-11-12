@@ -52,20 +52,22 @@ class PPO:
         #     print("✅ Policy and Value networks are separate")
 
 
-
+        policy_lr = 3e-4
 
         # === ЗНАЧИТЕЛЬНО УВЕЛИЧЬТЕ POLICY LR ===
         self.policy_optimizer = torch.optim.Adam([
-            {'params': self.policy.policy_net.parameters(), 'lr': 5e-4},  # Было 3e-4 или меньше
-            {'params': self.policy.velocity_mean_head.parameters(), 'lr': 5e-4},
-            {'params': self.policy.velocity_log_std_head.parameters(), 'lr': 5e-4},
-            {'params': self.policy.kick_head.parameters(), 'lr': 5e-4},
+            {'params': self.policy.policy_net.parameters(), 'lr': policy_lr},  # Было 3e-4 или меньше
+            {'params': self.policy.velocity_mean_head.parameters(), 'lr': policy_lr},
+            {'params': self.policy.velocity_log_std_head.parameters(), 'lr': policy_lr},
+            {'params': self.policy.kick_head.parameters(), 'lr': policy_lr},
         ], eps=1e-5)
+
+        value_lr = 1e-3
         
         self.value_optimizer = torch.optim.Adam([
-            {'params': self.policy.value_net.parameters(), 'lr': 2e-3},  # Высокий lr!
-            {'params': self.policy.value_head_1.parameters(), 'lr': 2e-3},
-            {'params': self.policy.value_head_2.parameters(), 'lr': 2e-3},
+            {'params': self.policy.value_net.parameters(), 'lr': value_lr},  # Высокий lr!
+            {'params': self.policy.value_head_1.parameters(), 'lr': value_lr},
+            {'params': self.policy.value_head_2.parameters(), 'lr': value_lr},
         ], eps=1e-5)
         
         # === LR SCHEDULERS ===
@@ -94,14 +96,14 @@ class PPO:
         # === RUNNING STATS ДЛЯ RETURNS ===
         self.return_rms = RunningMeanStd(momentum=0.99)
         # === БОЛЕЕ АГРЕССИВНОЕ СНИЖЕНИЕ ===
-        self.entropy_coef_initial = 0.001  # Уменьшите начальное
+        self.entropy_coef_initial = 0.005  # Уменьшите начальное
         self.entropy_coef_final = 0.0001   # Почти ноль в конце
-        self.entropy_decay_start = 2      # Начинаем снижать с episode 30
+        self.entropy_decay_start = 5      # Начинаем снижать с episode 30
 
 
-        """Режим fine-tuning после convergence"""
+        # """Режим fine-tuning после convergence"""
         
-        # Уменьшаем epochs
+        # # Уменьшаем epochs
         # self.K_epochs = 2  # Было 3
         
         # # Уменьшаем LR ещё сильнее
@@ -111,10 +113,10 @@ class PPO:
         # for param_group in self.value_optimizer.param_groups:
         #     param_group['lr'] *= 0.5
         
-        # Минимальный entropy coef
-        self.entropy_coef_final = 0.00005
+        # # Минимальный entropy coef
+        # self.entropy_coef_final = 0.00005
         
-        print("🎯 Fine-tuning mode activated!")
+        # print("🎯 Fine-tuning mode activated!")
     
     def get_entropy_coef(self, episode):
         """Агрессивное снижение entropy"""
@@ -138,7 +140,7 @@ class PPO:
         return max(K, self.K_epochs_final)
     
     def compute_returns_and_advantages(self, rewards, values, terminals, truncated, 
-                                   gamma=0.95, lam=0.95):
+                                   gamma=0.999, lam=0.95):
         returns = []
         advantages = []
         gae = 0
@@ -172,50 +174,50 @@ class PPO:
         
         # === НОРМАЛИЗАЦИЯ RETURNS PER EPISODE ===
         # Группируем по эпизодам
-        episode_returns = []
-        current_episode = []
+        # episode_returns = []
+        # current_episode = []
         
-        for i, (ret, term) in enumerate(zip(returns, terminals)):
-            current_episode.append(ret.item())
+        # for i, (ret, term) in enumerate(zip(returns, terminals)):
+        #     current_episode.append(ret.item())
             
-            if term == 1:
-                # Нормализуем эпизод
-                if len(current_episode) > 1:
-                    ep_mean = np.mean(current_episode)
-                    ep_std = np.std(current_episode) + 1e-8
-                    normalized_ep = [(r - ep_mean) / ep_std for r in current_episode]
-                else:
-                    normalized_ep = current_episode
+        #     if term == 1:
+        #         # Нормализуем эпизод
+        #         if len(current_episode) > 1:
+        #             ep_mean = np.mean(current_episode)
+        #             ep_std = np.std(current_episode) + 1e-8
+        #             normalized_ep = [(r - ep_mean) / ep_std for r in current_episode]
+        #         else:
+        #             normalized_ep = current_episode
                 
-                episode_returns.extend(normalized_ep)
-                current_episode = []
+        #         episode_returns.extend(normalized_ep)
+        #         current_episode = []
         
-        # Добавляем остаток
-        if current_episode:
-            if len(current_episode) > 1:
-                ep_mean = np.mean(current_episode)
-                ep_std = np.std(current_episode) + 1e-8
-                normalized_ep = [(r - ep_mean) / ep_std for r in current_episode]
-            else:
-                normalized_ep = current_episode
-            episode_returns.extend(normalized_ep)
+        # # Добавляем остаток
+        # if current_episode:
+        #     if len(current_episode) > 1:
+        #         ep_mean = np.mean(current_episode)
+        #         ep_std = np.std(current_episode) + 1e-8
+        #         normalized_ep = [(r - ep_mean) / ep_std for r in current_episode]
+        #     else:
+        #         normalized_ep = current_episode
+        #     episode_returns.extend(normalized_ep)
         
-        returns = torch.tensor(episode_returns, dtype=torch.float32, device=Constants.device)
+        # returns = torch.tensor(episode_returns, dtype=torch.float32, device=Constants.device)
         
         # Мягкий clipping
-        returns = torch.clamp(returns, -50, 50)
-        advantages = torch.clamp(advantages, -10, 10)
+        # returns = torch.clamp(returns, -50, 50)
+        # advantages = torch.clamp(advantages, -15, 15)
         
         return returns, advantages
 
     
 
-    def update_with_minibatches_default(self, memory: Memory, ep, minibatch_size=2048):
+    def update_with_minibatches_default(self, memory: Memory, ep, minibatch_size=256):
         
         
         # === БОЛЕЕ ЖЁСТКИЙ CLIPPING ===
-        rewards_clipped = torch.clamp(memory.rewards, -15, 15)  # Было [-100, 100]!
-        memory.rewards = rewards_clipped
+        # rewards_clipped = torch.clamp(memory.rewards, -50, 50)  # Было [-100, 100]!
+        # memory.rewards = rewards_clipped
 
         self.current_ep = ep
 
@@ -241,9 +243,11 @@ class PPO:
         returns, advantages = self.compute_returns_and_advantages(
             memory.rewards, batch_values, memory.is_terminals, memory.is_truncated)
         
-        # === НОРМАЛИЗУЕМ RETURNS ===
-        # returns_np = returns.cpu().numpy()
-        # self.return_rms.update(returns_np)
+        # === ДОБАВЬТЕ ЭТОТ БЛОК ПРАВИЛЬНОЙ НОРМАЛИЗАЦИИ ===
+        # Это стабилизирует цель для Value-сети
+        # if returns.std() > 1e-8:
+        #     returns = (returns - returns.mean()) / returns.std()
+        # ====================================================
         
         # returns_normalized = self.return_rms.normalize(returns_np)
         # returns_normalized = torch.tensor(
@@ -324,13 +328,10 @@ class PPO:
         
         if advantages.std() > 1e-8:
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
-        # Дополнительный clipping для стабильности
-        # advantages = torch.clamp(advantages, -5, 5)
 
 
         # 5. После нормализации
         if raw_std > 1e-8:
-            # advantages = (advantages - raw_mean) / (raw_std + 1e-8)
             
             print(f"\n📏 After Normalization:")
             print(f"   Range: [{advantages.min():.3f}, {advantages.max():.3f}]")
@@ -339,7 +340,7 @@ class PPO:
             will_clip = (advantages.abs() > 5).sum().item()
             print(f"   Will be clipped: {will_clip}/{len(advantages)} ({100*will_clip/len(advantages):.1f}%)")
             
-            advantages = torch.clamp(advantages, -10, 10)
+            # advantages = torch.clamp(advantages, -10, 10)
             
             print(f"   After Clipping: [{advantages.min():.3f}, {advantages.max():.3f}]")
         else:
@@ -457,6 +458,7 @@ class PPO:
     def _update_value_function(self, states, returns):
         """Обновление value с защитой от gradient explosion"""
         
+        # Получаем предсказания СТАРОЙ сети
         with torch.no_grad():
             _, _, _, old_values = self.policy_old.forward(states)
             if old_values.dim() > 1:
@@ -472,17 +474,28 @@ class PPO:
             if values.dim() > 1:
                 values = values.squeeze(-1)
             
-            # === ИСПОЛЬЗУЙТЕ HUBER LOSS ===
-            value_loss = F.smooth_l1_loss(values, returns, beta=1.0)
-            
+            _, _, _, values = self.policy.forward(states)
+            values = values.squeeze(-1)
+
+            # === НОВЫЙ РАСЧЕТ ПОТЕРЬ С КЛИППИНГОМ ===
+            # Клиппинг предсказаний
+            values_clipped = old_values + torch.clamp(
+                values - old_values, -self.eps_clip, self.eps_clip
+            )
+            # Потери на оригинальных и клиппированных значениях
+            loss_v1 = F.smooth_l1_loss(values, returns, reduction='none')
+            loss_v2 = F.smooth_l1_loss(values_clipped, returns, reduction='none')
+            # Итоговые потери - максимум из двух
+            value_loss = torch.max(loss_v1, loss_v2).mean()
+            # ==========================================
+
             self.value_optimizer.zero_grad()
             value_loss.backward()
             
-            # === ИЗМЕНИТЕ ЗДЕСЬ ===
             grad_norm = torch.nn.utils.clip_grad_norm_(
                 list(self.policy.value_net.parameters()) + 
-                list(self.policy.value_head_1.parameters()) +  # ДОБАВЬТЕ
-                list(self.policy.value_head_2.parameters()),   # ДОБАВЬТЕ
+                list(self.policy.value_head_1.parameters()) +
+                list(self.policy.value_head_2.parameters()),
                 max_norm=2.0
             )
             
@@ -509,89 +522,8 @@ class PPO:
                 print(f"  Value iter {value_iter}: loss={value_loss.item():.2f}, "
                     f"grad_norm={grad_norm:.4f}, pred_std={pred_std:.2f}, target_std={target_std:.2f}")
             
-            if value_loss.item() < 10.0:
+            if value_loss.item() < 0.1:
                 break
-
-
-
-
-    # def _update_minibatch_default(self, states, actions_final, old_logps, advantages, returns, returns_normalized):
-    #     """Обновление на одном мини-батче"""
-    #     # === КРИТИЧЕСКАЯ ДИАГНОСТИКА ===
-    #     # new_log_probs, values, entropy = self.policy.evaluate_actions(
-    #     #     states, actions_final)
-        
-    #     # === VALUE UPDATE С EARLY STOPPING ===
-    #     best_value_loss = float('inf')
-    #     patience = 2
-    #     no_improve_count = 0
-        
-    #     for value_iter in range(8):  # Максимум 8, но может остановиться раньше
-    #         _, _, _, values = self.policy.forward(states)
-    
-    #         # Проверка размерностей
-    #         if value_iter == 0:
-    #             print(f"  Values shape: {values.shape}")
-    #             print(f"  Returns shape: {returns_normalized.shape}")
-            
-    #         values_normalized = (values - self.returns_mean) / (self.returns_std + 1e-8)
-            
-    #         # Приведите к одной размерности
-    #         if values_normalized.dim() > 1:
-    #             values_normalized = values_normalized.squeeze(-1)
-            
-    #         value_loss = F.smooth_l1_loss(values_normalized, returns_normalized)
-            
-    #         self.value_optimizer.zero_grad()
-    #         value_loss.backward()
-    #         torch.nn.utils.clip_grad_norm_(
-    #             list(self.policy.value_net.parameters()) + 
-    #             list(self.policy.value_head.parameters()), 
-    #             max_norm=0.5
-    #         )
-    #         self.value_optimizer.step()
-            
-    #         # Early stopping
-    #         current_loss = value_loss.item()
-    #         if current_loss < best_value_loss:
-    #             best_value_loss = current_loss
-    #             no_improve_count = 0
-    #         else:
-    #             no_improve_count += 1
-    #             if no_improve_count >= patience:
-    #                 if value_iter % 3 == 0:
-    #                     print(f"  Value early stop at iter {value_iter}")
-    #                 break
-            
-    #         if value_iter % 3 == 0:
-    #             print(f"  Value iter {value_iter}: MSE={current_loss:.2f}")
-            
-    #     # === ТЕПЕРЬ POLICY ===
-    #     new_log_probs, values, entropy = self.policy.evaluate_actions(states, actions_final)
-        
-        
-    #     ratios = torch.exp(new_log_probs - old_logps)
-    #     clipped_ratios = torch.clamp(ratios, 1 - self.eps_clip, 1 + self.eps_clip)
-    #     clipped_fraction = (ratios != clipped_ratios).float().mean().item()
-    #     kl_div = (old_logps - new_log_probs).mean().item()
-        
-    #     # Loss computation
-    #     surr1 = ratios * advantages
-    #     surr2 = clipped_ratios * advantages
-    #     actor_loss = -torch.min(surr1, surr2).mean()
-    #     critic_loss = F.mse_loss(values.squeeze(-1), returns)
-        
-    #     loss = actor_loss + 0.1 * critic_loss
-            
-    #     entropy_coef = 0.01
-    #     total_loss = loss - entropy_coef * entropy.mean()
-        
-    #     self.policy_optimizer.zero_grad()
-    #     total_loss.backward()
-    #     torch.nn.utils.clip_grad_norm_(self.policy.parameters(), max_norm=0.5)
-    #     self.policy_optimizer.step()
-        
-    #     return clipped_fraction, kl_div, total_loss
     
     
 

@@ -7,13 +7,13 @@ if __name__ == '__main__':
 
     def training():
         app = App(play=False, draw_game=False, logging=True)
-        app.training(max_steps=2000, draw_stats=True, \
-                     load_filename="Checkpoints/separate_v4.pth", \
-                      save_filename="Checkpoints/separate_v5.pth")
+        app.training(max_steps=4000, draw_stats=True, \
+                     load_filename=None, \
+                      save_filename="Checkpoints/separate_goals_v1.pth")
 
     def ai():
-        app = App(play=True, draw_game=True, logging=True)
-        app.start_ai_game("Checkpoints/separate_v5.pth")
+        app = App(play=False, draw_game=True, logging=True)
+        app.start_ai_game("Checkpoints/separate_goals_v1.pth")
 
 
     mp.set_start_method('spawn')

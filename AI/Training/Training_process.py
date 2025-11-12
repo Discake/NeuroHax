@@ -2,6 +2,7 @@ import torch
 
 from AI.Training.Collector import SharedMemoryExperienceCollector
 from AI.Training.Memory import Memory
+from AI.Training.ChunkedMmapBuffer import ChunkedMmapBuffer
 from AI.Training.PPO import PPO
 from AI.Training.Environment import Environment
 import Constants
@@ -18,7 +19,7 @@ class Training_process:
         self.logging = False
         
 
-    def train(self, num_workers = 8, max_steps_per_worker = 1024, draw_stats = True, \
+    def train(self, num_workers = 1, max_steps_per_worker = 1024, draw_stats = True, \
               save_filename = None):
         self.logging = draw_stats
 
@@ -38,9 +39,13 @@ class Training_process:
                 # self.ppo.update_with_minibatches(exp1, episode)
                 # self.ppo.update(exp1, episode, self.logging)
 
+            # for shm in collector.shm_objects:
+            #     shm.close()
+            #     shm.unlink()
             for shm in collector.shm_objects:
-                shm.close()
-                shm.unlink()
+                if isinstance(shm, ChunkedMmapBuffer):
+                    # shm.close()
+                    shm.close(delete_files=True)  # Удалить файл из диска
 
             if save_filename is not None:
                 self.save1 = torch.save(self.ppo.policy.state_dict(), save_filename)

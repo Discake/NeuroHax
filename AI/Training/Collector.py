@@ -8,6 +8,7 @@ from AI.SeparateNetworkPolicy import SeparateNetworkPolicy
 from AI.Simple import UltraSimplePolicy
 from AI.Training.Environment import Environment
 from AI.Training.Memory import Memory
+from AI.Training.ChunkedMmapBuffer import ChunkedMmapBuffer
 import Constants
 
 class SharedMemoryExperienceCollector:
@@ -15,6 +16,21 @@ class SharedMemoryExperienceCollector:
         self.num_workers = num_workers
         self.max_steps_per_worker = max_steps_per_worker
         self.step_size = None
+
+    def create_or_cleanup_shared_memory(self, name, size):
+        try:
+            # Попытка открыть существующий сегмент
+            existing_shm = shared_memory.SharedMemory(name=name)
+            existing_shm.close()
+            existing_shm.unlink()
+            print(f"Старый сегмент {name} удалён")
+        except FileNotFoundError:
+            pass  # Нет старого сегмента — всё ок
+
+        # Создаём новый сегмент
+        shm = shared_memory.SharedMemory(name=name, create=True, size=size)
+        
+        return shm
         
     def create_shared_memory_blocks(self, state_size, action_size):
         """Создание shared memory блоков для каждого worker'а"""
@@ -24,23 +40,20 @@ class SharedMemoryExperienceCollector:
         
         for i in range(self.num_workers):
             # размер одной ячейки сохранения в байтах
-            step_size = state_size * 4 + action_size * 4 + 1 * 4 + 1 * 4 + 1 * 4 + 1 * 4 # bytes
-            # step_size = state_size * 4 + action_size * 2 * 4 + 1 * 4 + 1 * 4 + 1 * 4 # bytes
-
-            step_size *= 2 # Из-за двух нейросетей
-
-            # размер одной ячейки сохранения в абсолютных единицах
-            self.step_size = state_size + action_size + 1 + 1 + 1 + 1 # 3 единицы - награда, логарифм, шаг завершения
-            # self.step_size = state_size + action_size * 2 + 1 + 1 + 1 # 3 единицы - награда, логарифм, шаг завершения
-
-            self.total_size = self.max_steps_per_worker * step_size
+            self.step_bytes = (state_size + action_size + 1 + 1 + 1 + 1) * 4 * 2  # *2 — для двух агентов
+            self.step_size = state_size + action_size + 1 + 1 + 1 + 1  # в элементах float32, без умножений
+            self.total_size = self.max_steps_per_worker * self.step_bytes
             
-            shm_name = f"ppo_experience_{i}"
-            shm = shared_memory.SharedMemory(create=True, size=self.total_size, name=shm_name)
+            shm_name = f"ppo_experience_{i}.dat"
+
+            # shm = self.create_or_cleanup_shared_memory(shm_name, self.total_size)
+            shm = ChunkedMmapBuffer(shm_name, self.max_steps_per_worker * 2, self.step_size)
+
+            # shm = shared_memory.SharedMemory(create=True, size=self.total_size, name=shm_name)
             self.shm_objects.append(shm)  # Сохраняем, чтобы не удалил сборщик мусора
             self.shm_names.append(shm_name)
             
-            self.shapes.append((self.max_steps_per_worker, action_size, state_size))  # Flexible shape
+            self.shapes.append((self.max_steps_per_worker * 2, action_size, state_size))  # Flexible shape
              
         
         return self.shm_names, self.shapes
@@ -52,19 +65,20 @@ class SharedMemoryExperienceCollector:
             local_policy = SeparateNetworkPolicy()  # Ваш класс политики
             local_policy.load_state_dict(state_dict)
             
-            # if torch.cuda.is_available():
-            #     local_policy1 = local_policy1.to(f'cuda:{process_id % torch.cuda.device_count()}')
-            #     local_policy2 = local_policy2.to(f'cuda:{process_id % torch.cuda.device_count()}')
-            
             # Инициализация shared memory
             shm = self.shm_objects[process_id]
             
             # Создание numpy array для записи
             # Shape: (max_steps, num_features) - flattened
-            buffer_size = shm.size
-            num_steps = buffer_size // (step_size * 4)
+            buffer_size = self.total_size  # байты
+            num_steps = round(buffer_size / (self.step_bytes))  # step_size — количество элементов float32, умножаем на 4 байта для байтов
+
+            if isinstance(shm, ChunkedMmapBuffer):
+                shm.open()
+                experience_buffer = shm
+
             
-            experience_buffer = np.ndarray((num_steps, step_size), dtype=np.float32, buffer=shm.buf)
+            # experience_buffer = np.ndarray((num_steps, step_size), dtype=np.float32, buffer=shm.buf)
             
             # Сбор опыта
             step = 0
@@ -72,18 +86,22 @@ class SharedMemoryExperienceCollector:
             
             done = False
             s1, s2 = env.reset()
-            while step < self.max_steps_per_worker and not done:  # Ваш цикл игры                
-                if torch.cuda.is_available():
-                    s1 = s1.to(Constants.device)
-                    s2 = s2.to(Constants.device)
+            while step < self.max_steps_per_worker and not done:  # Ваш цикл игры
 
                 action1, log_prob1 = local_policy.select_action(s1)
                 action2, log_prob2 = local_policy.select_action(s2)
-                # action1, action1_raw, log_prob1 = local_policy.select_action(s1)
-                # action2, action2_raw, log_prob2 = local_policy.select_action(s2)
-                # (ns1, ns2), (r1, r2), done = env.step(action1, action2)
+                
 
-                (ns1, ns2), (r1, r2), done, info = env.step(action1, action2)
+                # Готовим действия для шага в среде
+                action_to_apply_1 = action1.detach().clone()
+                action_to_apply_2 = action2.detach().clone()
+
+                # !!! ВАЖНЫЙ ШАГ: Обратное отражение действия для team2 !!!
+                # Поскольку s2 был отражен, то и действие от сети нужно отразить обратно.
+                # Предполагаем, что первый элемент действия - это управление по оси X.
+                # action_to_apply_2[0] *= -1
+
+                (ns1, ns2), (r1, r2), done, info = env.step(action_to_apply_1, action_to_apply_2)
         
                 # Извлекаем флаги
                 natural_done = info.get('natural_done', False)
@@ -129,12 +147,15 @@ class SharedMemoryExperienceCollector:
                 # if step % 100 == 0:
                 #     print(f"Записано шагов: {step}")
                 
-                experience_buffer[2 * step] = experience_line1
-                experience_buffer[2 * step + 1] = experience_line2
+                experience_buffer[step] = experience_line1
+                # experience_buffer[2 * step] = experience_line1
+                # experience_buffer[2 * step + 1] = experience_line2
                 step += 1
 
                 s1, s2 = ns1, ns2
                 
+            shm.close()
+            # shm.delete()
             return process_id  # Успешное завершение
             
         except Exception as e:
@@ -168,32 +189,21 @@ class SharedMemoryExperienceCollector:
                 shm = self.shm_objects[i]
                 
                 # Чтение данных
-                num_steps = shm.size // (self.step_size * 4)
-                experience_buffer = np.ndarray((num_steps, self.step_size), dtype=np.float32, buffer=shm.buf)
+                num_steps = self.total_size // (self.step_size * 4)
+                # experience_buffer = np.ndarray((num_steps, self.step_size), dtype=np.float32, buffer=shm.buf)
+                
+                if isinstance(shm, ChunkedMmapBuffer):
+                    shm.open()
+                    experience_buffer = shm
                 
                 # Парсинг опыта
                 
-                for step in range(num_steps * 2):
-                    if np.all(experience_buffer[step] == 0): break  
-
-                    # line = experience_buffer[step]
-                    # state = line[0:state_size]
-                    # action = line[state_size:state_size + action_size]
-                    # action_raw = line[state_size+ action_size:state_size + action_size * 2]
-                    # reward = line[state_size + action_size * 2]
-                    # log_prob = line[state_size + action_size * 2 + 1]
-                    # done = line[state_size + action_size * 2 + 2]
-                    # all_exp_states1.append(state.tolist())      
-                    # all_exp_actions1.append(action.tolist())
-                    # all_exp_actions1_raw.append(action_raw.tolist())
-                    # all_exp_log_probs1.append(float(log_prob))
-                    # all_exp_rewards1.append(float(reward))
-                    # all_exp_dones1.append(float(done))
+                for step in range(num_steps - 1):
+                    if np.all(experience_buffer[step] == 0): continue  
 
                     line = experience_buffer[step]
                     state = line[0:state_size]
                     action = line[state_size:state_size + action_size]
-                    # action_raw = line[state_size+ action_size:state_size + action_size * 2]
                     reward = line[state_size + action_size]
                     log_prob = line[state_size + action_size + 1]
                     done = line[state_size + action_size + 2]
@@ -206,10 +216,6 @@ class SharedMemoryExperienceCollector:
                     all_exp_rewards1.append(float(reward))
                     all_exp_dones1.append(float(done))
                     all_exp_truncated.append(float(truncated))
-
-
-                    
-                
                 
             except Exception as e:
                 print(f"Error reading shared memory {i}: {e}")

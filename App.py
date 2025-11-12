@@ -106,6 +106,9 @@ class App:
                     if isinstance(action, Net_action):
                         input_to_net = action.translator.translate_input()
                         input_to_act, _  = action.net.select_action(input_to_net)
+
+                        # if not action.is_team1:
+                        #     input_to_act[0] *= -1
                         action.act(input_to_act)
                     else:
                         action.act()

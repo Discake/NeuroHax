@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 from Core.Data_structure.Gates_data import Gates_data
 from Core.Objects.Ball import Ball
 from Core.Objects.Gate import Gate
@@ -17,7 +18,8 @@ class Map:
         self.gates = list[Gate]()
         self.walls = list[WallCollision]()
 
-        self.score = [0, 0]
+        self.score_team1 = False
+        self.score_team2 = False
         self.kick_flag_team1 = False
         self.kick_flag_team2 = False
         self.time_increment = Constants.time_increment
@@ -59,8 +61,9 @@ class Map:
                 Constants.players_positions_team1[i],
                 Constants.player_radius,
                 Constants.player_mass,
-                Constants.max_player_speed)
-            player.set_color(Constants.player_color)
+                Constants.max_player_speed,
+                True)
+            # player.set_color(Constants.player_color1)
             self.players_team1.append(player)
 
         for i in range(Constants.player_number):
@@ -68,12 +71,17 @@ class Map:
                 Constants.players_positions_team2[i],
                 Constants.player_radius,
                 Constants.player_mass,
-                Constants.max_player_speed)
-            player.set_color(Constants.player_color)
+                Constants.max_player_speed,
+                False)
+            # player.set_color(Constants.player_color2)
             self.players_team2.append(player)
 
     def move_balls(self):
-        
+        if self.score_team1 or self.score_team2:
+            self.load_random()
+
+        self.ball_dir_team1_bonus = None
+        self.ball_dir_team2_bonus = None
         self.kick_flag_team1 = False
         self.kick_flag_team2 = False
         # Итерации нужны для обеспечения разрешимости коллизий при высоких скоростях
@@ -115,6 +123,12 @@ class Map:
                     if player.is_kicking:
                         self.kick(player, ball, is_team_1=False)
 
+            for ball in self.balls:
+                if ball.position[0] < self.gates[0].outer_width:
+                    self.score_team2 = True
+                if ball.position[0] > Constants.window_size[0] - self.gates[1].outer_width:
+                    self.score_team1 = True
+
 
     def kick(self, ball : Player, other_ball : Ball, is_team_1):
         ball_pos = ball.position
@@ -128,41 +142,82 @@ class Map:
         dist = torch.dot(direction, direction)
         if dist < (ball.radius + other_ball.radius + Constants.kick_radius) ** 2:
             ball.kick(other_ball, direction)
-            self.kick_flag = True
             if is_team_1:
                 self.kick_flag_team1 = True
-            else:
-                self.kick_flag_team2 = True
+                self.kick_flag_team2 = False
 
-    def load_random(self): # Метод загрузки первого игрока на поле в случайной позиции
+                opponent_goal_center = torch.tensor([Constants.window_size[0], Constants.window_size[1] / 2], device=Constants.device)
+                vector_to_goal = opponent_goal_center - ball.position
+    
+                # Используем скорость мяча ПОСЛЕ удара
+                ball_velocity_after_kick = ball.velocity 
+                
+                # Скалярное произведение нормализованных векторов
+                alignment = torch.dot(
+                    F.normalize(vector_to_goal, dim=-1),
+                    F.normalize(ball_velocity_after_kick, dim=-1)
+                )
+
+                self.ball_dir_team1_bonus = alignment
+            else:
+                opponent_goal_center = torch.tensor([0, Constants.window_size[1] / 2], device=Constants.device)
+                vector_to_goal = opponent_goal_center - ball.position
+    
+                # Используем скорость мяча ПОСЛЕ удара
+                ball_velocity_after_kick = ball.velocity 
+                
+                # Скалярное произведение нормализованных векторов
+                alignment = torch.dot(
+                    F.normalize(vector_to_goal, dim=-1),
+                    F.normalize(ball_velocity_after_kick, dim=-1)
+                )
+
+                self.ball_dir_team2_bonus = alignment
+
+                self.kick_flag_team2 = True
+                self.kick_flag_team1 = False
+
+    def load_random(self): # Метод загрузки игроков на поле в случайной позиции
+
+        self.kick_flag = False
+        self.score_team1 = False
+        self.score_team2 = False
+
+        pos1, pos2, ball_pos = Constants.get_load_positions()
 
         for i, player in enumerate(self.players_team1):
-            player.position = Constants.players_positions_team1[i]
+            player.position = pos1[i]
             player.position[1] = random.randint(Constants.field_margin + player.radius, Constants.window_size[1] - Constants.field_margin - player.radius)
             player.velocity = torch.tensor([0., 0.], device=Constants.device)
 
         for i, player in enumerate(self.players_team2):
-            player.position = Constants.players_positions_team2[i]
+            player.position = pos2[i]
             player.position[1] = random.randint(Constants.field_margin + player.radius, Constants.window_size[1] - Constants.field_margin - player.radius)
             player.velocity = torch.tensor([0., 0.], device=Constants.device)
 
         for i, ball in enumerate(self.balls):
-            ball.position = Constants.balls_positions[i]
+            ball.position = ball_pos[i]
+            ball.position[0] += random.randint(-100, 100)
+            ball.position[1] = random.randint(Constants.field_margin + ball.radius, Constants.window_size[1] - Constants.field_margin - ball.radius)
             ball.velocity = torch.tensor([0., 0.], device=Constants.device) 
 
     def load(self): # Метод загрузки всех игроков и мячей на начальные позиции
         self.kick_flag = False
+        self.score_team1 = False
+        self.score_team2 = False
+
+        pos1, pos2, ball_pos = Constants.get_load_positions()
 
         for i, player in enumerate(self.players_team1):
-            player.position = Constants.players_positions_team1[i]
+            player.position = pos1[i]
             player.velocity = torch.tensor([0., 0.], device=Constants.device)
 
         for i, player in enumerate(self.players_team2):
-            player.position = Constants.players_positions_team2[i]
+            player.position = pos2[i]
             player.velocity = torch.tensor([0., 0.], device=Constants.device)
 
         for i, ball in enumerate(self.balls):
-            ball.position = Constants.balls_positions[i]
+            ball.position = ball_pos[i]
             ball.velocity = torch.tensor([0., 0.], device=Constants.device)     
     
     def add_balls(self):

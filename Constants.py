@@ -23,16 +23,20 @@ iterations = 1 * round(time_increment)
 friction = 0.02  # Friction coefficient
 
 kicking_power = 0.1  # Power of the kick
-kick_radius = 15  # Radius of the kick
+kick_radius = 14  # Radius of the kick
 
 # Color
 player_color = (25, 25, 112)  # Blue color for the player
+player_color1 = (25, 25, 112)  # Blue color for the player
+player_color2 = (230, 230, 143)  # Blue color for the player
 ball_color = (255, 69, 0)  # Red color for the ball
 filling_color = (255, 255, 255)  # White color for the background
 field_color = (60, 179, 113)  # Green color for the field
 main_player_color = (255, 255, 0)  # Red color for the main player
 gates_outer_color = (127, 127, 127)  # Grey color for the outer gates
 kicking_color = (255, 105, 180)  # Red color for kicking
+kicking_color1 = (255, 105, 180)  # Red color for kicking
+kicking_color2 = (0, 0, 175)  # Red color for kicking
 gates_inner_color = (0, 100, 0)
 
 # Amount of players and balls
@@ -71,7 +75,20 @@ for i in range(player_number):
 
 players_positions_team1 = [(torch.tensor([player_x_position_from_center_team1 + x_center, y + y_center], dtype=torch.float32).to(device)) for y in players_y_positions]
 players_positions_team2 = [(torch.tensor([player_x_position_from_center_team2 + x_center, y + y_center], dtype=torch.float32).to(device)) for y in players_y_positions]
+
+team1_pos_load = [pos.detach().clone() for pos in players_positions_team1]
+team2_pos_load = [pos.detach().clone() for pos in players_positions_team2]
+
 balls_positions = [(torch.tensor([ball_x_position_from_center + x_center, y + y_center], dtype=torch.float32).to(device)) for y in balls_y_positions]
+
+ball_pos_load = [pos.detach().clone() for pos in balls_positions]
+
+def get_load_positions():
+    pos1 = [pos.detach().clone() for pos in team1_pos_load]
+    pos2 = [pos.detach().clone() for pos in team2_pos_load]
+    ball_pos = [pos.detach().clone() for pos in ball_pos_load]
+
+    return pos1, pos2, ball_pos
 
 # Gates positions
 

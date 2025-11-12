@@ -17,7 +17,12 @@ class SeparateNetworkPolicy(nn.Module):
     def __init__(self, state_dim=Constants.state_size):
         super().__init__()
         
-        hidden_dim = 128
+        hidden_dim = 256
+
+        # self.side_flag_index = Constants.state_size - 1
+        # side_embed_dim = 8
+        # self.side_embed = nn.Embedding(2, side_embed_dim)  # side_flag 0/1
+        # state_mlp_input = state_dim - 1 + side_embed_dim
         
         # === POLICY NETWORK (без изменений) ===
         self.policy_net = nn.Sequential(
@@ -48,44 +53,70 @@ class SeparateNetworkPolicy(nn.Module):
         
     def _init_weights(self):
         """Правильная инициализация для разных активаций"""
-        
+
         # Policy network - Orthogonal для Tanh
         for m in self.policy_net.modules():
             if isinstance(m, nn.Linear):
                 nn.init.orthogonal_(m.weight, gain=np.sqrt(2))
                 nn.init.zeros_(m.bias)
-        
+
         # === VALUE NETWORK - He initialization для ReLU ===
         for m in self.value_net.modules():
             if isinstance(m, nn.Linear):
-                # Более агрессивная инициализация
                 nn.init.kaiming_uniform_(m.weight, a=0, mode='fan_in', nonlinearity='relu')
-                # Малый положительный bias для борьбы с dying ReLU
                 nn.init.constant_(m.bias, 0.01)
-        
+
         # Policy heads
         nn.init.orthogonal_(self.velocity_mean_head.weight, gain=0.01)
         nn.init.orthogonal_(self.velocity_log_std_head.weight, gain=0.01)
         nn.init.orthogonal_(self.kick_head.weight, gain=0.01)
-        
+
         nn.init.zeros_(self.velocity_mean_head.bias)
         nn.init.constant_(self.velocity_log_std_head.bias, -0.7)
         nn.init.zeros_(self.kick_head.bias)
-        
+
         # === VALUE HEADS - РАЗНАЯ инициализация для diversity ===
         nn.init.xavier_uniform_(self.value_head_1.weight, gain=2.0)
         nn.init.xavier_uniform_(self.value_head_2.weight, gain=0.5)
-        
+
         nn.init.constant_(self.value_head_1.bias, 5.0)  # Оптимистичный
-        nn.init.constant_(self.value_head_2.bias, -5.0)  # Пессимистичный
+        nn.init.constant_(self.value_head_2.bias, -5.0) # Пессимистичный
+
+        # =========================
+        # === СИЛЬНАЯ инициализация флага (последний вход) ===
+        # feature_flag_index = self.policy_net[0].weight.shape[1] - 1  # self.policy_net[0] -- первый Linear
+        
+        # Усилим влияние team_flag на первый слой policy
+        # with torch.no_grad():
+        #     # Например, установить веса к этому входу в диапазоне от -0.8 до 0.8:
+        #     self.policy_net[0].weight[:, feature_flag_index] = torch.empty(self.policy_net[0].weight.size(0)).normal_(mean=0.8, std=0.1)
+        #     # Можно просто все на 0.8:
+        #     # self.policy_net[0].weight[:, feature_flag_index] = 0.8
+
+        # # Если нужно сделать то же для value:
+        # feature_flag_index_val = self.value_net[0].weight.shape[1] - 1  # self.value_net[0] -- первый Linear
+        # with torch.no_grad():
+        #     self.value_net[0].weight[:, feature_flag_index_val] = torch.empty(self.value_net[0].weight.size(0)).normal_(mean=0.8, std=0.1)
+            # Или просто на 0.8
+            # self.value_net[0].weight[:, feature_flag_index_val] = 0.8
+
     
     def forward(self, state, debug=False):
+
+
+
+
         if state.dim() == 1:
             state = state.unsqueeze(0)
             single_sample = True
         else:
             single_sample = False
         
+        # side_idx = state[:, self.side_flag_index].long()
+        # state_main = torch.cat([state[:, :self.side_flag_index], state[:, self.side_flag_index+1:]], dim=1)
+        # side_emb = self.side_embed(side_idx)
+        # state_cat = torch.cat([state_main, side_emb], dim=1)
+
         # Policy forward
         policy_features = self.policy_net(state)
         velocity_mean = self.velocity_mean_head(policy_features)
