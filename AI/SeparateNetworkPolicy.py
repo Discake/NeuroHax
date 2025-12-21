@@ -18,11 +18,6 @@ class SeparateNetworkPolicy(nn.Module):
         super().__init__()
         
         hidden_dim = 256
-
-        # self.side_flag_index = Constants.state_size - 1
-        # side_embed_dim = 8
-        # self.side_embed = nn.Embedding(2, side_embed_dim)  # side_flag 0/1
-        # state_mlp_input = state_dim - 1 + side_embed_dim
         
         # === POLICY NETWORK (без изменений) ===
         self.policy_net = nn.Sequential(
@@ -39,9 +34,9 @@ class SeparateNetworkPolicy(nn.Module):
         # === VALUE NETWORK - ПРОСТАЯ И ШИРОКАЯ ===
         # Меньше слоёв, больше нейронов в каждом
         self.value_net = nn.Sequential(
-            nn.Linear(state_dim, 256),  # Один широкий слой
+            nn.Linear(state_dim, 64),
             nn.ReLU(),
-            nn.Linear(256, 128),
+            nn.Linear(64, 128),
             nn.ReLU(),
         )
         
@@ -82,24 +77,6 @@ class SeparateNetworkPolicy(nn.Module):
         nn.init.constant_(self.value_head_1.bias, 5.0)  # Оптимистичный
         nn.init.constant_(self.value_head_2.bias, -5.0) # Пессимистичный
 
-        # =========================
-        # === СИЛЬНАЯ инициализация флага (последний вход) ===
-        # feature_flag_index = self.policy_net[0].weight.shape[1] - 1  # self.policy_net[0] -- первый Linear
-        
-        # Усилим влияние team_flag на первый слой policy
-        # with torch.no_grad():
-        #     # Например, установить веса к этому входу в диапазоне от -0.8 до 0.8:
-        #     self.policy_net[0].weight[:, feature_flag_index] = torch.empty(self.policy_net[0].weight.size(0)).normal_(mean=0.8, std=0.1)
-        #     # Можно просто все на 0.8:
-        #     # self.policy_net[0].weight[:, feature_flag_index] = 0.8
-
-        # # Если нужно сделать то же для value:
-        # feature_flag_index_val = self.value_net[0].weight.shape[1] - 1  # self.value_net[0] -- первый Linear
-        # with torch.no_grad():
-        #     self.value_net[0].weight[:, feature_flag_index_val] = torch.empty(self.value_net[0].weight.size(0)).normal_(mean=0.8, std=0.1)
-            # Или просто на 0.8
-            # self.value_net[0].weight[:, feature_flag_index_val] = 0.8
-
     
     def forward(self, state, debug=False):
 
@@ -111,18 +88,13 @@ class SeparateNetworkPolicy(nn.Module):
             single_sample = True
         else:
             single_sample = False
-        
-        # side_idx = state[:, self.side_flag_index].long()
-        # state_main = torch.cat([state[:, :self.side_flag_index], state[:, self.side_flag_index+1:]], dim=1)
-        # side_emb = self.side_embed(side_idx)
-        # state_cat = torch.cat([state_main, side_emb], dim=1)
 
         # Policy forward
         policy_features = self.policy_net(state)
         velocity_mean = self.velocity_mean_head(policy_features)
         velocity_log_std = self.velocity_log_std_head(policy_features)
 
-        velocity_log_std = torch.clamp(velocity_log_std, -2, 0.5)
+        velocity_log_std = torch.clamp(velocity_log_std, -0.5, 1)
         
         kick_logit = self.kick_head(policy_features).squeeze(-1)
         
@@ -197,9 +169,13 @@ class SeparateNetworkPolicy(nn.Module):
         entropy = velocity_dist.entropy().sum(-1) + kick_dist.entropy()
         
         return total_logp, values, entropy
+        
+    def get_value(self, state):
+        """For data collection"""
+        _, _, _, value = self.forward(state)
+        return value
     
     def select_action(self, state):
         """For data collection"""
-        with torch.no_grad():
-            action, log_prob, _, _ = self.get_action(state)
+        action, log_prob, _, _ = self.get_action(state)
         return action, log_prob

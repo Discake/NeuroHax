@@ -145,4 +145,4 @@ class App:
 
         t = Training_process(Environment(model1, model2, num_steps=max_steps), draw_stats=draw_stats)
         
-        return t.train(draw_stats=draw_stats, max_steps_per_worker=max_steps, save_filename=save_filename)
+        return t.train(max_steps_per_worker=max_steps, save_filename=save_filename)

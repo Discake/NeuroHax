@@ -2,7 +2,7 @@ import torch
 
 # AI
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-state_size = 14 # Input of the model
+state_size = 16 # Input of the model
 action_size = 3 # Action output of the model
 
 training_time_coefficient = 2
@@ -27,7 +27,7 @@ kick_radius = 14  # Radius of the kick
 
 # Color
 player_color = (25, 25, 112)  # Blue color for the player
-player_color1 = (25, 25, 112)  # Blue color for the player
+player_color1 = (112, 25, 112)  # Blue color for the player
 player_color2 = (230, 230, 143)  # Blue color for the player
 ball_color = (255, 69, 0)  # Red color for the ball
 filling_color = (255, 255, 255)  # White color for the background
@@ -35,8 +35,8 @@ field_color = (60, 179, 113)  # Green color for the field
 main_player_color = (255, 255, 0)  # Red color for the main player
 gates_outer_color = (127, 127, 127)  # Grey color for the outer gates
 kicking_color = (255, 105, 180)  # Red color for kicking
-kicking_color1 = (255, 105, 180)  # Red color for kicking
-kicking_color2 = (0, 0, 175)  # Red color for kicking
+kicking_color2 = (255, 105, 180)  # Red color for kicking
+kicking_color1 = (0, 0, 175)  # Red color for kicking
 gates_inner_color = (0, 100, 0)
 
 # Amount of players and balls
@@ -92,8 +92,6 @@ def get_load_positions():
 
 # Gates positions
 
-left_gates_center_x = 0
-left_gates_center_y = y_center
 
 
 gates_outer_width = 100
@@ -101,6 +99,8 @@ gates_outer_height = 300
 gates_inner_width = 80
 gates_inner_height = 250
 
+left_gates_center_x = gates_outer_width
+left_gates_center_y = y_center
 right_gates_center_x = window_size[0] - gates_outer_width
 right_gates_center_y = y_center
 

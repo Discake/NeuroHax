@@ -31,4 +31,5 @@ class Keydown_action(Player_action):
         input = [float(self.pressed_keys[1]) - float(self.pressed_keys[0]),\
                   float(self.pressed_keys[3]) - float(self.pressed_keys[2]),\
                     int(self.pressed_keys[4])]
+        input[0] = -input[0]
         super().act(torch.tensor(input))

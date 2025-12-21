@@ -9,10 +9,9 @@ class Player_action:
     def act(self, input):
         with torch.no_grad():
 
-            temp = input.squeeze(0)
+            temp = input.flatten()
 
-            if hasattr(self, "is_team1"):
-                if not self.is_team1:
+            if not self.player.is_team1:
                     temp[0] = -temp[0]
 
             self.player.velocity[0] += temp[0] * Constants.acceleration

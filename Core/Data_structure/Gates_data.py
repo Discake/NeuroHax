@@ -7,7 +7,7 @@ class Gates_data:
         if is_left:
             self.center_x = Constants.left_gates_center_x
             self.center_y = Constants.left_gates_center_y
-            self.add_pos = (-Constants.gates_outer_width + Constants.gates_inner_width, Constants.gates_inner_height / 2)
+            self.add_pos = (Constants.gates_inner_width, Constants.gates_inner_height / 2)
         else:
             self.center_x = Constants.right_gates_center_x
             self.center_y = Constants.right_gates_center_y
