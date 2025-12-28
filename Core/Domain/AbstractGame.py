@@ -12,7 +12,7 @@ class AbstractGame(ABC):
         pass
 
     @abstractmethod
-    def get_state(self):
+    def get_state(self) -> dict:
         pass
 
     @abstractmethod

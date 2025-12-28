@@ -1,7 +1,7 @@
 from Core.Domain.GameConfig import GameConfig
 from Core.Domain.IDrawing import IDrawing
 from Core.Presentation.GamePresentation.ExternalDrawingInterface import ExternalDrawingInterface
-from Core.Presentation.GamePresentation.StateDTO import StateDTO
+from Core.Domain.StateDTO import StateDTO
 from Core.Presentation.GamePresentation.DrawingConfig import DrawingConfig
 
 class DrawingImpl(IDrawing):

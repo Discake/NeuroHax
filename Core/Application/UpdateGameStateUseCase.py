@@ -18,5 +18,6 @@ class UpdateGameStateUseCase():
             game.handle_input(input)
         game.update(physics)
         self.game_repository.save(game)
+        return game.get_state()
 
     
