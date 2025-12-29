@@ -64,12 +64,12 @@ class PygamePlayerController(PlayerController):
         
         return input
 
-    def is_acting(self):
+    def is_acting(self, state):
         self.check_events()
 
         return self.event is not None and (self.event.type == pygame.KEYUP or self.event.type == pygame.KEYDOWN)
 
-    def get_action(self):
+    def get_action(self, state):
         return self.output
 
 

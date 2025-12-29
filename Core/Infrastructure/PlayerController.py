@@ -8,9 +8,9 @@ class PlayerController(ABC):
         self.team_id = team_id
 
     @abstractmethod
-    def is_acting(self):
+    def is_acting(self, state : dict):
         pass
 
     @abstractmethod
-    def get_action(self) -> PlayerInput:
+    def get_action(self, state : dict) -> PlayerInput:
         pass

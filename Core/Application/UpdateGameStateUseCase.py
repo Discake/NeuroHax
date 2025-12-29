@@ -12,9 +12,9 @@ class UpdateGameStateUseCase():
     def execute(self, game_id, physics : Physics):
         game = self.game_repository.get_by_id(game_id)
         for player in self.player_controllers:
-            if not player.is_acting():
+            if not player.is_acting(game.get_state()):
                 continue
-            input = player.get_action()
+            input = player.get_action(game.get_state())
             game.handle_input(input)
         game.update(physics)
         self.game_repository.save(game)
