@@ -1,6 +1,6 @@
 import torch
 import Constants
-from Core.Objects.Map import Map
+from Core.Domain.Entities.Map import Map
 
 class Translator:
     def __init__(self, map: Map, net, player, is_team_1):
@@ -85,31 +85,42 @@ class Translator:
         # Относительная позиция противника
         rel_opp_pos_x = opp_pos_x - my_pos_x
         rel_opp_pos_y = opp_pos_y - my_pos_y
+        
+        # Дистанция до противника
+        dist_to_opponent = (rel_opp_pos_x ** 2 + rel_opp_pos_y ** 2) ** 0.5
 
         # Добавить флаг "твоя сторона поля"
         my_side = 1.0 if (my_player.position[0] < Constants.x_center) == my_player.is_team1 else -1.0
 
         # 5. ### СОБИРАЕМ ИТОГОВЫЙ STATE ###
-        # Используем только относительные и канонические координаты
+        # Индексы (оригинальная архитектура для trained_kick_policy.pth):
+        # 0-3: my_pos_x, my_pos_y, my_vel_x, my_vel_y
+        # 4-5: rel_ball_pos_x, rel_ball_pos_y (мяч относительно игрока!)
+        # 6-7: ball_vel_x, ball_vel_y
+        # 8-11: rel_opp_pos_x, rel_opp_pos_y, opp_vel_x, opp_vel_y
+        # 12-14: ball_to_goal_x, ball_to_goal_y, dist_ball_to_goal
+        # 15: dist_to_opponent
+        # 16: my_side
         state = torch.tensor([
             # Моя позиция и скорость (абсолютная, но в канонической системе)
             my_pos_x, my_pos_y, my_vel_x, my_vel_y,
-            
-            # Позиция мяча (относительно меня)
+
+            # Позиция мяча (ОТНОСИТЕЛЬНО меня) — ИНДЕКСЫ 4, 5!
             rel_ball_pos_x, rel_ball_pos_y,
-            
+
             # Скорость мяча (абсолютная, в канонической системе)
             ball_vel_x, ball_vel_y,
-            
+
             # Позиция противника (относительно меня)
             rel_opp_pos_x, rel_opp_pos_y, opp_vel_x, opp_vel_y,
-            
+
             # Информация о цели (относительно мяча, это "подсказка", куда везти мяч)
             ball_to_goal_x, ball_to_goal_y, dist_ball_to_goal,
 
+            # Дистанция до противника
+            dist_to_opponent,
+
             my_side
-            
-            # Можно добавить еще признаки, если нужно, но БЕЗ side_flag
         ], device=Constants.device)
-        
+
         return state

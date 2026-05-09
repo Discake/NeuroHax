@@ -50,11 +50,12 @@ class PhysicsImpl(Physics):
         delta_x = ball2.x - ball1.x
         delta_y = ball2.y - ball1.y
 
-        angle = math.atan2(delta_y, delta_x)
-
-        # Матрица перехода к "ударной" системе координат
-        cos_angle = math.cos(angle)
-        sin_angle = math.sin(angle)
+        # Нормализуем напрямую — без atan2/cos/sin
+        _dist = math.sqrt(delta_x * delta_x + delta_y * delta_y)
+        if _dist == 0:
+            return
+        cos_angle = delta_x / _dist
+        sin_angle = delta_y / _dist
         rotation = [
             [cos_angle, sin_angle],
             [-sin_angle, cos_angle]
@@ -186,8 +187,8 @@ class PhysicsImpl(Physics):
         move1 = overlap * (inv_m1 / inv_sum)
         move2 = overlap * (inv_m2 / inv_sum)
 
-        ball1.x -= 2 * nx * move1
-        ball1.y -= 2 * ny * move1
-        ball2.x += 2 * nx * move2
-        ball2.y += 2 * ny * move2
+        ball1.x -= nx * move1
+        ball1.y -= ny * move1
+        ball2.x += nx * move2
+        ball2.y += ny * move2
 

@@ -67,7 +67,7 @@ class SeparateNetworkPolicy(nn.Module):
         nn.init.orthogonal_(self.kick_head.weight, gain=0.01)
 
         nn.init.zeros_(self.velocity_mean_head.bias)
-        nn.init.constant_(self.velocity_log_std_head.bias, -0.7)
+        nn.init.constant_(self.velocity_log_std_head.bias, -0.5)  # Больше std для исследования
         nn.init.zeros_(self.kick_head.bias)
 
         # === VALUE HEADS - РАЗНАЯ инициализация для diversity ===
@@ -76,6 +76,11 @@ class SeparateNetworkPolicy(nn.Module):
 
         nn.init.constant_(self.value_head_1.bias, 5.0)  # Оптимистичный
         nn.init.constant_(self.value_head_2.bias, -5.0) # Пессимистичный
+        
+        # === ИНИЦИАЛИЗАЦИЯ ДЛЯ ЧАСТЫХ УДАРОВ ===
+        # Устанавливаем bias чтобы P(kick) ≈ 70% на старте
+        with torch.no_grad():
+            self.kick_head.bias.fill_(0.85)  # sigmoid(0.85) ≈ 70%
 
     
     def forward(self, state, debug=False):
@@ -174,8 +179,59 @@ class SeparateNetworkPolicy(nn.Module):
         """For data collection"""
         _, _, _, value = self.forward(state)
         return value
-    
-    def select_action(self, state):
-        """For data collection"""
-        action, log_prob, _, _ = self.get_action(state)
-        return action, log_prob
+
+    def select_action(self, state, deterministic=False):
+        """
+        Выбор действия
+        
+        Args:
+            state: Состояние
+            deterministic: Если True, использовать детерминированное действие (для визуализации)
+        
+        Returns:
+            action, log_prob
+        """
+        velocity_mean, velocity_log_std, kick_logit, value = self.forward(state)
+
+        velocity_std = torch.exp(velocity_log_std)
+
+        if deterministic:
+            # Для визуализации/тестирования - берём среднее (без шума)
+            velocity = velocity_mean
+            kick = (kick_logit > 0).float()
+            
+            # Вычисляем log_prob для детерминированного действия
+            velocity_dist = torch.distributions.Normal(velocity_mean, velocity_std)
+            kick_dist = torch.distributions.Bernoulli(logits=kick_logit)
+            total_logp = velocity_dist.log_prob(velocity).sum(-1) + kick_dist.log_prob(kick)
+        else:
+            # Для тренировки - сэмплируем
+            velocity_dist = torch.distributions.Normal(velocity_mean, velocity_std)
+            kick_dist = torch.distributions.Bernoulli(logits=kick_logit)
+
+            velocity = velocity_dist.rsample()
+            velocity = torch.clamp(velocity, -3, 3)
+
+            kick = kick_dist.sample()
+
+            total_logp = velocity_dist.log_prob(velocity).sum(-1) + kick_dist.log_prob(kick)
+
+        if velocity.dim() == 1:
+            action = torch.cat([velocity, kick.unsqueeze(-1)], dim=-1)
+        else:
+            action = torch.cat([velocity, kick.unsqueeze(-1)], dim=-1)
+
+        return action, total_logp
+
+    def select_action_deterministic(self, state):
+        """
+        Выбор детерминированного действия (для визуализации)
+        Меньшая дисперсия = более стабильное поведение
+        
+        Args:
+            state: Состояние
+            
+        Returns:
+            action, log_prob
+        """
+        return self.select_action(state, deterministic=True)

@@ -31,8 +31,21 @@ class Memory:
 
     def clear(self):
         """Очищает память после обновления политики"""
-        del self.states[:]
-        del self.actions[:]
-        del self.old_log_probs[:]
-        del self.rewards[:]
-        del self.is_terminals[:]
+        # Обрабатываем случай, когда поля уже тензоры
+        if isinstance(self.states, list):
+            del self.states[:]
+            del self.actions_final[:]
+            del self.actions_raw[:]
+            del self.old_log_probs[:]
+            del self.rewards[:]
+            del self.is_terminals[:]
+            del self.is_truncated[:]
+        else:
+            # Если уже тензоры - сбрасываем в списки
+            self.states = []
+            self.actions_final = []
+            self.actions_raw = []
+            self.old_log_probs = []
+            self.rewards = []
+            self.is_terminals = []
+            self.is_truncated = []

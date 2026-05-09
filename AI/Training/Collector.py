@@ -3,9 +3,7 @@ import numpy as np
 from multiprocessing import shared_memory
 import torch
 
-from AI.Maksigma_net import Maksigma_net
 from AI.SeparateNetworkPolicy import SeparateNetworkPolicy
-from AI.Simple import UltraSimplePolicy
 from AI.Training.Environment import Environment
 from AI.Training.Memory import Memory
 from AI.Training.ChunkedMmapBuffer import ChunkedMmapBuffer
@@ -133,7 +131,7 @@ class SharedMemoryExperienceCollector:
                 exp2_truncated = np.array([1.0 if truncated else 0.0])
 
                 experience_line2 = np.concatenate([exp2_state, exp2_action, exp2_reward, exp2_log_prob, exp2_done, exp2_truncated])
-                # experience_buffer[step + 1] = experience_line2 # Сохраняем в следующую ячейку
+                experience_buffer[step + 1] = experience_line2 # Сохраняем в следующую ячейку
 
                 # print(f"exp_line1={experience_line1}")
                 # print(f"exp_line2={experience_line2}")
@@ -222,7 +220,8 @@ class SharedMemoryExperienceCollector:
     def read_and_parse_shared_memory(total_size, step_size,  state_size, action_size, shm_names):
         # Сбор данных из shared memory
         all_exp_states1, all_exp_actions1, all_exp_log_probs1, all_exp_rewards1, all_exp_dones1, all_exp_truncated = [], [], [], [], [], []
-        
+        all_exp_states2, all_exp_actions2, all_exp_log_probs2, all_exp_rewards2, all_exp_dones2, all_exp_truncated2 = [], [], [], [], [], []
+
 
         shm_objects = []
         for i in range(len(shm_names)):
@@ -230,21 +229,21 @@ class SharedMemoryExperienceCollector:
                 # Открытие shared memory
                 shm_name = shm_names[i]
                 shm = ChunkedMmapBuffer()
-                
+
                 # Чтение данных
                 num_steps = total_size // (step_size * 4)
                 shm.open(num_steps, step_size, shm_name)
-                
+
                 if isinstance(shm, ChunkedMmapBuffer):
                     # shm.open()
                     experience_buffer = shm
                     shm_objects.append(shm)
-                
+
                 # Парсинг опыта
-                
+
                 for step in range(num_steps):
-                    if np.all(experience_buffer[step] == 0): 
-                        continue 
+                    if np.all(experience_buffer[step] == 0):
+                        continue
 
                     line = experience_buffer[step]
                     state = line[0:state_size]
@@ -255,25 +254,42 @@ class SharedMemoryExperienceCollector:
                     truncated = line[state_size + action_size + 3]
 
 
-                    all_exp_states1.append(state.tolist())      
+                    all_exp_states1.append(state.tolist())
                     all_exp_actions1.append(action.tolist())
                     all_exp_log_probs1.append(float(log_prob))
                     all_exp_rewards1.append(float(reward))
                     all_exp_dones1.append(float(done))
                     all_exp_truncated.append(float(truncated))
-                
+                    
+                    # Чтение опыта для игрока 2 (следующий шаг)
+                    if step + 1 < num_steps and not np.all(experience_buffer[step + 1] == 0):
+                        line2 = experience_buffer[step + 1]
+                        state2 = line2[0:state_size]
+                        action2 = line2[state_size:state_size + action_size]
+                        reward2 = line2[state_size + action_size]
+                        log_prob2 = line2[state_size + action_size + 1]
+                        done2 = line2[state_size + action_size + 2]
+                        truncated2 = line2[state_size + action_size + 3]
+                        
+                        all_exp_states2.append(state2.tolist())
+                        all_exp_actions2.append(action2.tolist())
+                        all_exp_log_probs2.append(float(log_prob2))
+                        all_exp_rewards2.append(float(reward2))
+                        all_exp_dones2.append(float(done2))
+                        all_exp_truncated2.append(float(truncated2))
+
             except Exception as e:
                 print(f"Error reading shared memory {i}: {e}")
                 continue
 
         # После чтения shared memory из всех процессов
         merged1 = Memory()
-        merged1.states = all_exp_states1
-        merged1.actions_final = all_exp_actions1
-        merged1.old_log_probs = all_exp_log_probs1
-        merged1.rewards = all_exp_rewards1
-        merged1.is_terminals = all_exp_dones1
-        merged1.is_truncated = all_exp_truncated
+        merged1.states = all_exp_states1 + all_exp_states2
+        merged1.actions_final = all_exp_actions1 + all_exp_actions2
+        merged1.old_log_probs = all_exp_log_probs1 + all_exp_log_probs2
+        merged1.rewards = all_exp_rewards1 + all_exp_rewards2
+        merged1.is_terminals = all_exp_dones1 + all_exp_dones2
+        merged1.is_truncated = all_exp_truncated + all_exp_truncated2
         merged1.copy_to_tensors()
 
         for i in range(len(shm_objects)):
