@@ -170,13 +170,13 @@ class Map():
 
     def load_random(self):
         """Случайная расстановка для нового эпизода (счёт не сбрасывается)."""
-        self.players_team1[0].x  = random.uniform(50, self.width / 2 - 50)
-        self.players_team1[0].y  = random.uniform(80, self.height - 80)
+        self.players_team1[0].x  = random.uniform(30, self.width)
+        self.players_team1[0].y  = random.uniform(30, self.height)
         self.players_team1[0].vx = 0;  self.players_team1[0].vy = 0
         self.players_team1[0].is_kicking = False
 
-        self.players_team2[0].x  = random.uniform(self.width / 2 + 50, self.width - 50)
-        self.players_team2[0].y  = random.uniform(80, self.height - 80)
+        self.players_team2[0].x  = random.uniform(30, self.width)
+        self.players_team2[0].y  = random.uniform(30, self.height)
         self.players_team2[0].vx = 0;  self.players_team2[0].vy = 0
         self.players_team2[0].is_kicking = False
 

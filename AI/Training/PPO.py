@@ -29,7 +29,7 @@ class PPO:
         self.vf_coef = 0.5  # увеличено для более сильного обучения критика (было 0.2)
 
         # === ОПТИМИЗАТОР ДЛЯ ВСЕЙ СЕТИ (PPO-эпохи) ===
-        self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=1e-3, eps=1e-8)
+        self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=1e-4, eps=1e-8)
 
         # === ОПТИМИЗАТОР ТОЛЬКО ДЛЯ КРИТИКА (value warmup) ===
         # Отдельный оптимизатор гарантирует, что actor не трогается во время warmup
@@ -49,7 +49,7 @@ class PPO:
         self.K_epochs_initial = 12
         self.K_epochs_final = 8
 
-        self.eps_clip = 0.2
+        self.eps_clip = 0.1
 
         # === БЕГУЩАЯ EMA СТАНДАРТНОГО ОТКЛОНЕНИЯ НАГРАД ===
         # Предотвращает скачки reward_scale между эпизодами (нет голов → std=6, есть голы → std=200)
@@ -61,7 +61,7 @@ class PPO:
         # При coef=0.1 энтропийный бонус ≈ 0.35, что в 6–30× больше actor_loss (~0.01–0.05).
         # Следствие: политика застревает на 99.9% max entropy → actor gradient не работает.
         # Снижаем до coef=0.01 чтобы бонус (≈0.035) был сопоставим с actor_loss, а не доминировал.
-        self.entropy_coef_initial = 0.007  # для fine-tuning зрелой модели: уточнение, а не исследование
+        self.entropy_coef_initial = 0.005  # для fine-tuning зрелой модели: уточнение, а не исследование
         self.entropy_coef_final = 0.001
         self.entropy_decay_start = 20
         # Эффективная точка старта спада — сбрасывается при обновлении лаг-оппонента
@@ -176,7 +176,7 @@ class PPO:
 
         returns, advantages = self.compute_returns_and_advantages(
             scaled_rewards, batch_values, memory.is_terminals, memory.is_truncated,
-            gamma=0.99, lam=0.97)
+            gamma=0.997, lam=0.95)
 
         # Нормализация advantages
         if advantages.std() > 1e-8:
@@ -208,7 +208,7 @@ class PPO:
             warmed_values = self.policy.get_value(batch_states).squeeze()
         returns, advantages = self.compute_returns_and_advantages(
             scaled_rewards, warmed_values, memory.is_terminals, memory.is_truncated,
-            gamma=0.991, lam=0.96)
+            gamma=0.997, lam=0.95)
         if advantages.std() > 1e-8:
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
         print(f"after warmup: values mean={warmed_values.mean():.3f}, std={warmed_values.std():.3f}")

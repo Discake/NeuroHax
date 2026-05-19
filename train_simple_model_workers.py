@@ -53,42 +53,29 @@ from Core.Domain.Entities.Map import Map
 
 def _worker_loop(worker_id, cmd_queue, result_queue, target_steps, max_episode_steps, seed=None):
     """
-    Постоянный воркер-процесс. Запускается один раз, ждёт команд через cmd_queue.
-    Команды: (sd1, sd2) — собрать опыт; None — остановиться.
-
-    Логика сбора:
-      - Запускает полные эпизоды, которые заканчиваются только на забитом голе.
-      - Продолжает собирать эпизоды пока step < target_steps * 2.
-      - Останавливается на первом голе ПОСЛЕ того, как собрано >= target_steps шагов.
-      - Если эпизод превысил max_episode_steps без гола — safety-truncation,
-        эпизод сбрасывается, но сбор продолжается.
+    Постоянный воркер-процесс. Собирает ровно target_steps переходов,
+    обрывая эпизоды при необходимости (truncated=1).
     """
     try:
-        # Ограничиваем intra-op потоки PyTorch до 1 на воркер.
-        # set_num_interop_threads НЕ вызываем: если пул уже инициализирован при импорте,
-        # повторный вызов вызывает deadlock (документированное поведение PyTorch).
         torch.set_num_threads(1)
 
         if seed is not None:
             torch.manual_seed(seed + worker_id * 1000)
             np.random.seed(seed + worker_id * 1000)
 
-        # Одноразовая инициализация — среда и модели создаются один раз
+        # Инициализация среды и политик (однократно)
         map_obj = Map()
         map_obj.load_random()
         translator1 = SimpleModelTranslator(map_obj, map_obj.players_team1[0], is_team_1=True)
         translator2 = SimpleModelTranslator(map_obj, map_obj.players_team2[0], is_team_1=False)
         policy1 = SimpleModel(translator1)
         policy2 = SimpleModel(translator2)
-        # num_steps = safety limit per episode (не лимит батча)
         env = SimpleModelEnvironment(policy1, policy2, num_steps=max_episode_steps)
 
-        # Предаллоцируем numpy-буферы один раз на всё время жизни воркера.
-        # Размер: target_steps*2 (минимальный батч) + max_episode_steps (один запасной эпизод).
-        # Буферы переиспользуются каждый раунд — никаких выделений памяти в горячем цикле.
-        S = Constants.state_size   # 19
-        A = Constants.action_size  # 5
-        max_buf = target_steps * 2 + max_episode_steps + 16
+        # Буферы ровно под target_steps + небольшой запас (на случай последнего шага)
+        S = Constants.state_size
+        A = Constants.action_size
+        max_buf = target_steps + 16
         buf_s1  = np.empty((max_buf, S), dtype=np.float32)
         buf_a1  = np.empty((max_buf, A), dtype=np.float32)
         buf_lp1 = np.empty(max_buf,     dtype=np.float32)
@@ -104,18 +91,16 @@ def _worker_loop(worker_id, cmd_queue, result_queue, target_steps, max_episode_s
 
         while True:
             cmd = cmd_queue.get()
-            if cmd is None:  # сигнал остановки
+            if cmd is None:
                 break
 
             sd1, sd2 = cmd
             policy1.load_state_dict(sd1)
             policy2.load_state_dict(sd2)
 
-            # Сброс среды
             s1, s2 = env.reset()
-            step = 0
-            n1 = 0  # счётчик записей P1
-            n2 = 0  # счётчик записей P2
+            n1 = 0
+            n2 = 0
 
             total_reward    = 0.0
             goals_team1     = 0
@@ -125,7 +110,8 @@ def _worker_loop(worker_id, cmd_queue, result_queue, target_steps, max_episode_s
             goal_reward_sum = 0.0
             move_reward_sum = 0.0
 
-            while True:
+            # Собираем ровно target_steps переходов
+            while n1 < target_steps:
                 with torch.inference_mode():
                     action1, log_prob1 = policy1.select_action(s1, deterministic=False)
                     action2, log_prob2 = policy2.select_action(s2, deterministic=False)
@@ -133,7 +119,7 @@ def _worker_loop(worker_id, cmd_queue, result_queue, target_steps, max_episode_s
                 (ns1, ns2), (r1, r2), _, info = env.step(action1, action2)
 
                 is_truncated = info.get('truncated', False)
-                nat_done     = info.get('natural_done', False)  # только гол
+                nat_done     = info.get('natural_done', False)  # гол
 
                 if info.get('goal_team1', False): goals_team1 += 1
                 if info.get('goal_team2', False): goals_team2 += 1
@@ -152,11 +138,7 @@ def _worker_loop(worker_id, cmd_queue, result_queue, target_steps, max_episode_s
                 term = 1.0 if nat_done else 0.0
                 trunc = 1.0 if is_truncated else 0.0
 
-                # Защита от переполнения буфера (если голов нет долго — принудительная остановка)
-                if n1 >= max_buf or n2 >= max_buf:
-                    break
-
-                # Индексная запись в прелоцированные буферы — без .tolist(), без list.append
+                # Запись переходов
                 buf_s1[n1]  = s1.detach().flatten().numpy()
                 buf_a1[n1]  = action1.detach().flatten().numpy()
                 buf_lp1[n1] = log_prob1.item()
@@ -173,20 +155,16 @@ def _worker_loop(worker_id, cmd_queue, result_queue, target_steps, max_episode_s
                 buf_tr2[n2] = trunc
                 n2 += 1
 
-                step += 2
-
-                if nat_done:
-                    # Гол — проверяем, достаточно ли собрано шагов
-                    if step >= target_steps * 2:
-                        break  # батч готов, последний эпизод завершён голом
-                    s1, s2 = env.reset()  # не хватает шагов — продолжаем
-                elif is_truncated:
-                    # Safety truncation без гола — сбрасываем и продолжаем
-                    s1, s2 = env.reset()
+                # Если эпизод завершён (гол или превышение max_episode_steps)
+                if nat_done or is_truncated:
+                    break
+                    if n1 < target_steps:
+                        s1, s2 = env.reset()   # продолжаем сбор
+                    # Иначе выходим из цикла (n1 достигло target_steps)
                 else:
                     s1, s2 = ns1, ns2
 
-            # Отправляем срезы буферов — Queue пикклит их, копирование происходит один раз
+            # Отправляем результат – ровно target_steps переходов
             result_queue.put((
                 worker_id,
                 buf_s1[:n1], buf_a1[:n1], buf_lp1[:n1], buf_r1[:n1], buf_t1[:n1], buf_tr1[:n1],
